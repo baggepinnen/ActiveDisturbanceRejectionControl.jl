@@ -17,4 +17,4 @@ This is also why the paper makes it look like the PID controller is much worse t
 
 
 
-For second-order linear ADRC, the conclusions are vey similar. The controller transfer function from the measurement to the control signal is (at least very close to) a second-order filtered PID controller, and the response from reference to control signal is approximately a PI controller. The expressions for the parameters are much more complex, but the conclusion that a 2DOF PID controller can do the job equally well remains.
+For second-order linear ADRC, the conclusions are vey similar. The controller transfer function from the measurement to the control signal is a second-order-filtered PID controller, and the response from reference to control signal is approximately a PI controller (that is, set point weighting in the proportional term, and zero set-point weighting in the derivative). The expressions for the parameters are much more complex, but the conclusion that a 2DOF PID controller can do the job equally well remains.

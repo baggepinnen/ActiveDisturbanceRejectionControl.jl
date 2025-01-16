@@ -1,5 +1,5 @@
 # Active Disturbance Rejection Control (ADRC)
-ADRC is a recent trend (fad?) in the control-systems community. A recent paper, reference below, demonstrated that linear ADRC is a rebranding of a well established concept, state feedback with state provided by a disturbance observer, where the disturbance model is $1/s$. This kind approach is a common way of providing integral action in a state-feedback controller.
+ADRC is a recent trend (fad?) in the control-systems community. A recent paper, referenced below, demonstrated that linear ADRC is a rebranding of a well established concept, state feedback with state provided by a disturbance observer with the disturbance model is $1/s$. This kind approach is a common way of providing integral action in a state-feedback controller.
 
 This repo demonstrates that linear first-order ADRC is in fact equivalent also to a filtered 2DOF PID controller, and very close to equivalent to a PI controller with set-point weighting and first-order low-pass filtering of the measurement.
 
@@ -17,4 +17,4 @@ This is also why the paper makes it look like the PID controller is much worse t
 
 
 
-For second-order linear ADRC, the conclusions are vey similar. The controller transfer function from the measurement to the control signal is a second-order-filtered PID controller, and the response from reference to control signal is approximately a PI controller (that is, set point weighting in the proportional term, and zero set-point weighting in the derivative). The expressions for the parameters are much more complex, but the conclusion that a 2DOF PID controller can do the job equally well remains.
+For second-order linear ADRC, the conclusions are similar. The controller transfer function from the measurement to the control signal is a second-order-filtered PID controller, and the response from reference to control signal is approximately a PI controller (that is, set-point weighting in the proportional term, and zero set-point weighting in the derivative). The expressions for the parameters are much more complex, but the conclusion that a 2DOF PID controller can do the job equally well remains.

@@ -1,0 +1,7 @@
+[deps]
+ControlSystemsBase = "aaaaaaaa-a6ca-5380-bf3e-84a91bcd477e"
+Groebner = "0b43b601-686d-58a3-8a1c-6623616c7cd4"
+MonteCarloMeasurements = "0987c9cc-fe09-11e8-30f0-b96dd679fdca"
+RobustAndOptimalControl = "21fd56a4-db03-40ee-82ee-a87907bee541"
+SymbolicControlSystems = "886cb795-8fd3-4b11-92f6-8071e46f71c5"
+Symbolics = "0c5d862f-8b57-4792-8d23-62f2024744c7"

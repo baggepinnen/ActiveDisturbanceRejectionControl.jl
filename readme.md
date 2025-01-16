@@ -14,3 +14,7 @@ that is, with the "bandwidth parametrization" of the disturbance observer. The p
 > “The user should not test the loop using set-point changes if the set point is to remain constant most of the time. To tune for fast recovery from load changes, a load disturbance should be simulated by stepping the controller output in manual, and then transferring to auto. For lag-dominant processes, the two responses are markedly different.”, - Shinskey 1993
 
 This is also why the paper makes it look like the PID controller is much worse than the ADRC controller. If the PI(D) controller is instead tuned to perform well for disturbance rejection, one can later tune the reference response by adjusting the set-point weight (or performing more elaborate reference prefiltering). This little analysis demonstrates that the linear first-order ADRC controller is in fact _completely equivalent_ to a 2DOF PID controller, and with only very minor approximation error, equivalent also to a PI controller with set-point weighting and first-order low-pass filtering of the measurement.
+
+
+
+For second-order linear ADRC, the conclusions are vey similar. The controller transfer function from the measurement to the control signal is (at least very close to) a second-order filtered PID controller, and the response from reference to control signal is approximately a PI controller. The expressions for the parameters are much more complex, but the conclusion that a 2DOF PID controller can do the job equally well remains.

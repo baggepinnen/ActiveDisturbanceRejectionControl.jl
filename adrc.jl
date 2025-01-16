@@ -5,15 +5,17 @@ Pkg.activate(".")
 
 using ControlSystemsBase, Plots, MonteCarloMeasurements, RobustAndOptimalControl, Test, LinearAlgebra
 t = 0:0.001:2
-K = Particles([0.1, 0.2, 0.5, 1, 2, 5, 10])
-T = Particles([0.1, 0.2, 0.5, 1, 2, 5, 10])
-P = tf([K],[1, T])
+
+# The plant model used in experiments
 K = 1
 T = 1
 P = tf([K],[1, T])
 
+"""
+    adrc(Tsettle, ogain)
 
-
+Construct an ADRC controller with settling time `Tsettle` and observer poles that are `ogain` times faster than the closed-loop poles. The returned controller has two inputs, `r` and `y`, and one output, `u`.
+"""
 function adrc(Tsettle, ogain)
     Pdes1 = ss(tf([1],[1, 0]))
     Pdes2 = add_low_frequency_disturbance(Pdes1, 1)
@@ -25,7 +27,7 @@ function adrc(Tsettle, ogain)
     k1 = -2sESO
     k2 = sESO^2
     K = [k1; k2;;]
-    L = [Kp/b0 1/b0]
+    # L = [Kp/b0 1/b0]
 
     obs = observer_filter(Pdes2, K, output_state=true)
 
@@ -54,6 +56,13 @@ function adrc(Tsettle, ogain)
     connect(systems, connections; external_inputs, external_outputs, unique=true) #* diagm([1, -1])
 end
 
+"""
+    equivalent_pid(Tsettle, ogain; simplified_r = true)
+
+Construct a PID controller that is equivalent to the ADRC controller with settling time `Tsettle` and observer poles that are `ogain` times faster than the closed-loop poles. The returned controller has two inputs, `r` and `y`, and one output, `u`.
+
+If `simplified_r` is true, the controller is a PI controller with set-point weighting on the proportional term and a first-order lowpass filter on the measurement. If `simplified_r` is false, the controller exactly matches the ADRC contorller, which is a filtered PID controller from the reference signal.
+"""
 function equivalent_pid(Tsettle, ogain; simplified_r = true)
     den = Tsettle^2*(4 + 8ogain)
     ki = 64.0*ogain^2 / den
@@ -75,7 +84,7 @@ function equivalent_pid(Tsettle, ogain; simplified_r = true)
     named_ss(C, y=:u, u=[:r, :y])
 end
 
-Tsettle = 1
+Tsettle = 1 # Parameters suggested in the paper
 ogain = 10
 Ca = adrc(Tsettle, ogain)
 Cr = Ca[:u,:r]
@@ -90,8 +99,10 @@ label = ["ADRC" "Suggested PID" "Equivalent PID (simp.)"]
 gangoffourplot(P, [Ca[:u,:y], C_suggested_pid, C_equivalent_pid[:u,:y]]; label)
 
 feedback2d(P, Ca) = feedback(P, -Ca[:u, :y])*(Ca[:u, :r])
-##
 
+
+## Analysis
+# The analysis below compares the ADRC controller to the in the paper suggested PID controller, as well as the approximately equivalent PI controller with set-point weighting
 
 # ADRC controller has overall higher gain
 # It looks like a PI controller from r, and a filtered PI controller from y
@@ -107,6 +118,26 @@ bodeplot([feedback2d(P, Ca), feedback(P*C_suggested_pid), feedback2d(P, C_equiva
 
 # Bode plots from y -> u look different, ADRC is tuned much more aggressively but uses rolloff
 bodeplot([G_CS(P, -Ca[:u, :y]), G_CS(P, C_suggested_pid), G_CS(P, -C_equivalent_pid[:u, :y])]; label=repeat(label, inner=(1,2)), title="Gyu", legend=:topleft, background_color_legend=nothing, foreground_color_legend=nothing)
+
+## Reproduce response-plots from 
+K = 1
+T = 1
+Ku = Particles([0.1, 0.2, 0.5, 1, 2, 5, 10])
+Tu = Particles([0.1, 0.2, 0.5, 1, 2, 5, 10])
+Pu = tf([Ku],[1, T])
+plot(step.([
+    feedback2d(Pu, Ca),
+    feedback(Pu*C_suggested_pid),
+    feedback2d(Pu, C_equivalent_pid)
+], Ref(t)); label, ri=false, layout=(1,3), sp=(1:3)', size=(800,400), ylabel="y")
+
+Pu = tf([K],[1, Tu])
+plot(step.([
+    feedback2d(Pu, Ca),
+    feedback(Pu*C_suggested_pid),
+    feedback2d(Pu, C_equivalent_pid)
+], Ref(t)); label, ri=false, layout=(1,3), sp=(1:3)', size=(800,400), ylabel="y")
+
 
 ## To figure this out, we propagate symbolic variables through the adrc constructor
 using Symbolics, SymbolicControlSystems

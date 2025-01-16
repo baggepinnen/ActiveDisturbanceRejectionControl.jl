@@ -41,13 +41,15 @@ function adrc(Tsettle, ogain, b0 = 1)
 
     obsn = named_ss(ss(diagm([one(T), Kd, one(T)]))*obs, u=[:u, :y], y=[:yh, :yh2, :fh])
     Kpn = named_ss(ss(Kp), u=:e, y=:up)
+    b0n = named_ss(ss(1/b0), u=:ub0, y=:u)
     s1 = sumblock("e = r-yh")
     s2 = sumblock("u0 = up - yh2")
-    sd = sumblock("u = u0 - fh")
+    sd = sumblock("ub0 = u0 - fh")
 
     systems = [
         obsn,
         Kpn,
+        b0n,
         s1,
         s2,
         sd,
@@ -56,6 +58,7 @@ function adrc(Tsettle, ogain, b0 = 1)
         :e => :e
         :up => :up
         :u0 => :u0
+        :ub0 => :ub0
         :u => :u
         :fh => :fh
         :yh => :yh
@@ -91,7 +94,7 @@ Construct a PID controller that is equivalent to the ADRC controller with settli
 
 If `simplified_r` is true, the controller is a PI controller with set-point weighting on the proportional term and a first-order lowpass filter on the measurement. If `simplified_r` is false, the controller exactly matches the ADRC contorller, which is a filtered PID controller from the reference signal.
 """
-function equivalent_pid(Tsettle, ogain; simplified_r = true)
+function equivalent_pid(Tsettle, ogain, b0=1; simplified_r = true)
     kpy, kiy, kdy, Ty, dy = 
     #((-72*ogain^3 - 108*ogain^2)/(3*Tsettle^2*ogain^2 + 6*Tsettle^2*ogain + Tsettle^2), -216*ogain^3/(3*Tsettle^3*ogain^2 + 6*Tsettle^3*ogain + Tsettle^3), (-6*ogain^3 - 36*ogain^2 - 18*ogain)/(3*Tsettle*ogain^2 + 6*Tsettle*ogain + Tsettle), Tsettle*sqrt(1/(3*ogain^2 + 6*ogain + 1))/6, (3*ogain + 2)*sqrt(1/(3*ogain^2 + 6*ogain + 1))/2)
     
@@ -113,7 +116,7 @@ function equivalent_pid(Tsettle, ogain; simplified_r = true)
         Cpidr = pid(kpr, ki, kdr, form=:parallel)*tf(1, [T, 1])
         [Cpidr -Cpidy]
     end
-    named_ss(C, y=:u, u=[:r, :y])
+    named_ss(1/b0 * C, y=:u, u=[:r, :y])
 end
 
 Tsettle = 5 # Parameters suggested in the paper
@@ -175,8 +178,8 @@ plot(step.([
 
 ## To figure this out, we propagate symbolic variables through the adrc constructor
 using Symbolics, SymbolicControlSystems
-@variables Tsettle ogain
-K = adrc(Tsettle, ogain)
+@variables Tsettle ogain b0
+K = adrc(Tsettle, ogain, b0)
 K = ss(identity.(K.A), identity.(K.B), identity.(K.C), identity.(K.D))
 ex = Num(K)
 tf.(ex)

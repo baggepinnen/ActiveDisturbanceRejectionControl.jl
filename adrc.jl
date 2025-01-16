@@ -16,8 +16,9 @@ P = tf([K],[1, T])
 
 Construct an ADRC controller with settling time `Tsettle` and observer poles that are `ogain` times faster than the closed-loop poles. The returned controller has two inputs, `r` and `y`, and one output, `u`.
 """
-function adrc(Tsettle, ogain, b0=1)
-    Pdes1 = ss(tf([1],[1, 0]))*b0
+function adrc(Tsettle, ogain)
+    # See second-order analysis for how b0 is incorporated here
+    Pdes1 = ss(tf([1],[1, 0]))
     Pdes2 = add_low_frequency_disturbance(Pdes1, 1)
 
     Kp = 4/Tsettle

@@ -218,7 +218,6 @@ eqs = [
 vars = [kp, ki, kd, Tf, d]
 
 sols = sp.solve(eqs, vars)
-# sols = sp.solve(symbolics_to_sympy.(eqs), symbolics_to_sympy.(vars))[]
 
 soli = 2
 @show kpy = sols[soli][1]

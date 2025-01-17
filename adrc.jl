@@ -3,13 +3,15 @@ cd(@__DIR__)
 using Pkg
 Pkg.activate(".")
 
-using ControlSystemsBase, Plots, MonteCarloMeasurements, RobustAndOptimalControl, Test, LinearAlgebra
+using ControlSystemsBase, Plots, RobustAndOptimalControl, Test, LinearAlgebra
 t = 0:0.001:2
 
 # The plant model used in experiments
 K = 1
 T = 1
 P = tf([K],[1, T])
+s = tf('s')
+
 
 """
     adrc(Tsettle, ogain)
@@ -65,8 +67,8 @@ If `simplified_r` is true, the controller is a PI controller with set-point weig
 """
 function equivalent_pid(Tsettle, ogain; simplified_r = true)
     den = Tsettle^2*(4 + 8ogain)
-    ki = 64.0*ogain^2 / den
-    kpy = (32*Tsettle*ogain + 16Tsettle*ogain^2) / den
+    ki = 64ogain^2 / den
+    kpy = (32Tsettle*ogain + 16Tsettle*ogain^2) / den
     T = Tsettle^3 / den
     
     C = if simplified_r
@@ -75,7 +77,7 @@ function equivalent_pid(Tsettle, ogain; simplified_r = true)
         pid_2dof(kpy, ki; b, form=:parallel) * [tf(1) 0; 0 tf(1, [T, 1])]
     else
         Cpidy = pid(kpy, ki, form=:parallel)*tf(1, [T, 1])
-        kpr = 32*Tsettle*ogain / den
+        kpr = 32Tsettle*ogain / den
         kdr = 4Tsettle^2 / den
         b = kpr / kpy
         Cpidr = pid(kpr, ki, kdr, form=:parallel)*tf(1, [T, 1])
@@ -89,16 +91,14 @@ ogain = 10
 Ca = adrc(Tsettle, ogain)
 Cr = Ca[:u,:r]
 Cy = Ca[:u,:y]
-X = zpk(Cr.sys)/zpk(Cy.sys)
-
 
 C_suggested_pid = pid(3.85, 3.85, form=:parallel)
-C_equivalent_pid = equivalent_pid(Tsettle, ogain)
+C_equivalent_pid = equivalent_pid(Tsettle, ogain, simplified_r=true)
 label = ["ADRC" "Suggested PID" "Equivalent PID (simp.)"]
 
+feedback2d(P, Ca) = feedback(P, -Ca[:u, :y])*(Ca[:u, :r])
 gangoffourplot(P, [Ca[:u,:y], C_suggested_pid, C_equivalent_pid[:u,:y]]; label)
 
-feedback2d(P, Ca) = feedback(P, -Ca[:u, :y])*(Ca[:u, :r])
 
 
 ## Analysis
@@ -108,6 +108,9 @@ feedback2d(P, Ca) = feedback(P, -Ca[:u, :y])*(Ca[:u, :r])
 # It looks like a PI controller from r, and a filtered PI controller from y
 # Overall, it has a much higher low-frequency gain but rolloff from measurements
 bodeplot([Ca, [C_suggested_pid -C_suggested_pid], C_equivalent_pid]; label=repeat(label, inner=(1,2)))
+
+# Cr looks _almost_ like a non-filtered PI contorller (as opposed to a filtered PID contorller) We can identify the parameters of this simplified PI controller by matching the asymptotes of the two controllers. The low-frequency asymptote is given by ki, and the high-frequency asymptote is given by kpr. The high-frequency asymptote is given by the limit of Cr when s → ∞, which simlifies to the Kp used in the adrc controller.
+# Cpidr2 = pid(4/Tsettle, kir, form=:parallel)
 
 
 # Step responses from r are identical
@@ -120,6 +123,7 @@ bodeplot([feedback2d(P, Ca), feedback(P*C_suggested_pid), feedback2d(P, C_equiva
 bodeplot([G_CS(P, -Ca[:u, :y]), G_CS(P, C_suggested_pid), G_CS(P, -C_equivalent_pid[:u, :y])]; label=repeat(label, inner=(1,2)), title="Gyu", legend=:topleft, background_color_legend=nothing, foreground_color_legend=nothing)
 
 ## Reproduce response-plots from 
+using MonteCarloMeasurements
 K = 1
 T = 1
 Ku = Particles([0.1, 0.2, 0.5, 1, 2, 5, 10])
@@ -139,38 +143,47 @@ plot(step.([
 ], Ref(t)); label, ri=false, layout=(1,3), sp=(1:3)', size=(800,400), ylabel="y")
 
 
+# ## 
+
+
+
+
 ## To figure this out, we propagate symbolic variables through the adrc constructor
+s = tf('s')
 using Symbolics, SymbolicControlSystems
-@variables Tsettle ogain
-K = adrc(Tsettle, ogain)
+@variables vTsettle vogain vb0
+K = adrc(vTsettle, vogain)#, vb0)
 K = ss(identity.(K.A), identity.(K.B), identity.(K.C), identity.(K.D))
 ex = Num(K)
 tf.(ex)
 # We then simply match the coefficients for each order of s, obtaining a system of equations that we can solve for the PID parameters
 # The PID controllers on symbolic form are constructed below
-@variables kp ki kd T
-s = tf('s')
-@variables kp ki kd T
-(kp + ki/s)/(s*T + 1)           # To find Cy
-(kp + ki/s + kd*s)/(s*T + 1)    # To find the exact expression for Cr
-# We now state the system of equations, starting with exact Cr
-Tsettle = 1
-ogain = 10
-den = Tsettle^2*(4 + 8ogain)
-kir = 64.0*ogain^2 / den
-kpr = 32*Tsettle*ogain / den
-kdr = 4Tsettle^2 / den
-Tr = Tsettle^3 / den
-Cpidr = pid(kpr, kir, kdr, form=:parallel)*tf(1, [Tr, 1])
 
-# We then consider Cy
-den = Tsettle^2*(4 + 8ogain) # Identical
-kiy = 64.0*ogain^2 / den     # Identical
-kpy = (32*Tsettle*ogain + 16Tsettle*ogain^2) / den
-Ty = Tsettle^3 / den         # Identical
-Cpidy = pid(kpy, kiy, form=:parallel)*tf(1, [Ty, 1])
 
-b = kpr / kpy # If using set-point weighting
+Base.active_repl.options.hint_tab_completes = false # This messes with sympy https://discourse.julialang.org/t/sympy-makes-repl-to-stuck/124814/6
+using SymbolicControlSystems
+using SymbolicControlSystems: @syms
+@syms kp ki kd Tf d Tsettle ogain b c
+# Cy
 
-## Cr looks _almost_ like a non-filtered PI contorller (as opposed to a filtered PID contorller) We can identify the parameters of this simplified PI controller by matching the asymptotes of the two controllers. The low-frequency asymptote is given by ki, and the high-frequency asymptote is given by kpr. The high-frequency asymptote is given by the limit of Cr when s → ∞, which simlifies to the Kp used in the adrc controller.
-Cpidr2 = pid(4/Tsettle, kir, form=:parallel)
+tf_des = tf((kp + ki/s)/(s*Tf + 1))
+tf_act = tf(symbolics_to_sympy(Symbolics.simplify(ex[2], expand=true)))
+
+numvec1 = numvec(tf_des)[]
+numvec2 = numvec(tf_act)[]
+denvec1 = denvec(tf_des)[][1:end-1] 
+denvec2 = denvec(tf_act)[][1:end-1] 
+
+
+eqs = [
+    numvec1./denvec1[end] - numvec2./denvec2[end],
+    denvec1[1:end-1]./denvec1[end]  - denvec2[1:end-1]./denvec2[end] # Make the last element 1
+]
+vars = [kp, ki, Tf]
+
+sol = sp.solve(eqs, vars)
+
+soli = 2
+@show kpy = sols[kp]
+@show kiy = sols[ki]
+@show Ty =  sols[Tf]

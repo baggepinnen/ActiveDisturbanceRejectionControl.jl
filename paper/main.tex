@@ -18,33 +18,33 @@
 
 \usepackage{microtype} % thinks harder about typesetting and generally produces nicer looking layout
 
-\usepackage{fontspec} % to specify unicode font below
+% \usepackage{fontspec} % to specify unicode font below
 %\usepackage{polyglossia}
 %\setmonofont{[JuliaMono-Regular.ttf]}[Scale=0.65] % A font with unicode 
 \usepackage{xcolor}
 \definecolor{bg}{rgb}{0.95,0.95,0.97}
-\usepackage{minted}
-\usemintedstyle{tango}
+% \usepackage{minted}
+% \usemintedstyle{tango}
 %\newminted{julia}{breaklines, autogobble, bgcolor=bg} % autogobble removes leading whitespace https://ftpmirror1.infania.net/mirror/CTAN/macros/latex/contrib/minted/minted.pdf
-\newenvironment{juliacode}{%
-\VerbatimEnvironment
-\begin{minted}[breaklines, autogobble, bgcolor=bg]{julia2.py:Julia2Lexer -x}%
-}%
-{%
-\end{minted}%
-}%
+% \newenvironment{juliacode}{%
+% \VerbatimEnvironment
+% \begin{minted}[breaklines, autogobble, bgcolor=bg]{julia2.py:Julia2Lexer -x}%
+% }%
+% {%
+% \end{minted}%
+% }%
 
-\newenvironment{ccode}{%
-\VerbatimEnvironment
-\begin{minted}[breaklines, autogobble, bgcolor=bg]{c}%
-}%
-{%
-\end{minted}%
-}%
+% \newenvironment{ccode}{%
+% \VerbatimEnvironment
+% \begin{minted}[breaklines, autogobble, bgcolor=bg]{c}%
+% }%
+% {%
+% \end{minted}%
+% }%
 
-\newmintinline{julia}{}
-\AtBeginEnvironment{snugshade*}{\vspace{-\FrameSep}} % compensate for extra space inserted due to bgcolor option https://github.com/gpoore/minted/issues/220
-\AfterEndEnvironment{snugshade*}{\vspace{-\FrameSep}}
+% \newmintinline{julia}{}
+% \AtBeginEnvironment{snugshade*}{\vspace{-\FrameSep}} % compensate for extra space inserted due to bgcolor option https://github.com/gpoore/minted/issues/220
+% \AfterEndEnvironment{snugshade*}{\vspace{-\FrameSep}}
 
 
 
@@ -196,7 +196,7 @@ To understand why the "suggested PI" controller performs poorly, we look at the 
 	\caption{Bode plot of the controllers.}
 	\label{fig:first_order_bode_C}
 \end{figure}
-We see that the ADRC controller has much higher gain in general, but high-frequeny rolloff in the response to measurements. We also see that the approximation made to the response from references in the equivalent PI controller is very small (the difference between the blue and the green curve in the left pane). The equivalent PI controller is equivalent to the ADRC transfer function in the response from measurements (right pane).
+We see that the ADRC controller has much higher gain in general, but high-frequency rolloff in the response to measurements. We also see that the approximation made to the response from references in the equivalent PI controller is very small (the difference between the blue and the green curve in the left pane). The equivalent PI controller is equivalent to the ADRC transfer function in the response from measurements (right pane).
 
 The (nominal) closed-loop response from references to output, $G_{yr}$, are almost identical between the three controllers, show in \cref{fig:first_order_bode_ry}.
 \begin{figure}[h]
@@ -213,7 +213,7 @@ but the (nominal) closed-loop response from measurements (and noise) to control 
 	\caption{Bode plot of the closed-loop response from measurements.}
 	\label{fig:first_order_bode_uy}
 \end{figure}
-Here, it is clearly visible that the ADRC controller and the suggested PI contr0ller are very different, where the former has significantly higher gain at intermediate frequencies, but rolloff for high frequencies.
+Here, it is clearly visible that the ADRC controller and the suggested PI controller are very different, where the former has significantly higher gain at intermediate frequencies, but rolloff for high frequencies.
 
 \subsection{Second-order system}
 The second-order system used in the experiment section in \cite{herbst2013simulative} is given by
@@ -264,6 +264,7 @@ The conclusions are largely the same for second-order systems. The response from
 	\label{fig:second_order_bode_uy}
 \end{figure}
 
+\clearpage
 \section{Conclusion}
 We have demonstrated the equivalence between linear ADRC with parameters selected using the bandwidth method, and a PI(D) controller with set-point weighting and a lowpass filter on the measurement signal. The equivalence is exact in the response from measurements, and a slight approximation in the response from references. 
 

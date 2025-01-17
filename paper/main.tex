@@ -1,0 +1,272 @@
+\documentclass[letterpaper, 10 pt, conference]{ieeeconf} 
+\IEEEoverridecommandlockouts                              % This command is only needed if 
+                                                          % you want to use the \thanks command
+\overrideIEEEmargins                                      % Needed to meet printer requirements.
+\usepackage{amsmath}
+
+\usepackage{graphicx} % Required for inserting images
+\usepackage{hyperref}
+\hypersetup{
+	colorlinks=true,
+	linkcolor=black,
+	citecolor=black,
+	filecolor=black,
+	urlcolor=black,
+}
+\usepackage{cleveref}
+\crefformat{footnote}{#2\footnotemark[#1]#3}
+
+\usepackage{microtype} % thinks harder about typesetting and generally produces nicer looking layout
+
+\usepackage{fontspec} % to specify unicode font below
+%\usepackage{polyglossia}
+%\setmonofont{[JuliaMono-Regular.ttf]}[Scale=0.65] % A font with unicode 
+\usepackage{xcolor}
+\definecolor{bg}{rgb}{0.95,0.95,0.97}
+\usepackage{minted}
+\usemintedstyle{tango}
+%\newminted{julia}{breaklines, autogobble, bgcolor=bg} % autogobble removes leading whitespace https://ftpmirror1.infania.net/mirror/CTAN/macros/latex/contrib/minted/minted.pdf
+\newenvironment{juliacode}{%
+\VerbatimEnvironment
+\begin{minted}[breaklines, autogobble, bgcolor=bg]{julia2.py:Julia2Lexer -x}%
+}%
+{%
+\end{minted}%
+}%
+
+\newenvironment{ccode}{%
+\VerbatimEnvironment
+\begin{minted}[breaklines, autogobble, bgcolor=bg]{c}%
+}%
+{%
+\end{minted}%
+}%
+
+\newmintinline{julia}{}
+\AtBeginEnvironment{snugshade*}{\vspace{-\FrameSep}} % compensate for extra space inserted due to bgcolor option https://github.com/gpoore/minted/issues/220
+\AfterEndEnvironment{snugshade*}{\vspace{-\FrameSep}}
+
+
+
+\newcommand{\cmt}[1]{{\color{blue} Comment: #1}}
+\newcommand{\footnotelink}[1]{\footnote{\href{https://#1}{#1}}}
+\newcommand{\package}[1]{\texttt{#1}}
+\newcommand{\packagelink}[2]{\href{#2}{\texttt{#1}}\footnote{\label{#1}\href{https://#2}{#2}}}
+\newcommand{\bmatrixx}[1]{\begin{bmatrix}#1\end{bmatrix}}
+
+\title{Linear ADRC is equivalent to PID with set-point weighting and measurement filter}
+\date{November 2024}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+We show that linear Active Disturbance-Rejection Control (ADRC) is equivalent to PI(D) control with set-point weighting and a lowpass filter on the measurement signal. We also provide expressions that make it possible to implement linear ADRC for first and second-order systems using commonplace two degree-of-freedom PID implementations. The expressions are equivalent to ADRC in the response from measurements, and a slight approximation in the response from references.
+\end{abstract}
+
+
+\section{Introduction}
+Active Disturbance-Rejection Control (ADRC) is often touted as a promising improvement over the PID controller as the goto tool for practitioners. In \cite{herbst2013simulative}, the author point out that ADRC, in particular linear ADRC, is a new name for the well-established method of using state feedback with state estimates provided by an observer augmented with a disturbance model. Linear ADRC makes the particular case of an integrating disturbance model acting on the plant input. 
+
+The author of \cite{herbst2013simulative} compares linear ADRC, tuned using the "bandwidth" method, to PI and PID controllers tuned to a particular response to a reference step. The conclusion that is drawn is that ADRC is generally more robust and performs overall better than the PI and PID controllers.
+
+In this paper, we show that linear ADRC tuned with the bandwidth method is in fact equivalent to a commonplace implementation of a PID controller. For \emph{first-order systems}, the controller response to measurements is equivalent to a PI controller with a first-order filter on the measurement signal, and the response to response to references is a PID controller (!). With very minor approximation error, the complete two degree-of-freedom controller can be represented as a single PI controller with set-point weighting and a first-order lowpass filter on the measurement, a very convenient conclusion considering how commonplace this particular implementation of a PI controller is. For \emph{second-order systems}, with a similar minor approximation (in reference response only, no approximation is made in the response from measurements), the linear ADRC controller is equivalent to a PID controller with set-point weighting and a second-order lowpass filter on measurements. Once again, a very convenient conclusion considering the ubiquity of this particular implementation.
+
+Linear ADRC can thus be "implemented" by simply tuning a PI(D) controller with gains derived from the ADRC tuning parameters, and we can view linear ADRC as new PID "tuning rule".
+
+\section{details}
+We will follow the notation used in \cite{herbst2013simulative}, that considers an ADRC controller on the following form
+\begin{align}
+   \bmatrixx{\dot{\hat{x}}_1 \\ \dot{\hat{x}}_2} &= 
+   		\bmatrixx{-l_1 & 1 \\ -l_2 & 0} \bmatrixx{\hat{x}_1 \\ \hat{x}_2} + 
+		\bmatrixx{b_0 \\ 0} u + \bmatrixx{l_1 \\ l_2} y \\
+	u &= \dfrac{-K_P(r-y) - \hat{f}}{b_0} = \dfrac{-K_P(r-\hat{x}_1) - \hat{x}_2}{b_0}
+\end{align}
+where $r$ is the reference signal, $y$ is the measurement signal, $u$ is the control signal, and $\hat{f}$ is the estimated disturbance input. The tuning parameters are $l_1$, $l_2$, and $K_P$, and these are set by picking a desired settling time $T_s$ and the \emph{characteristic gain} of the plant, $b_0$. The plant is assumed to be on the form
+$$P(s) = \dfrac{K}{Ts+1}$$
+which gives $b_0 = K/T$. The parameters as dictated by the tuning rule are selected as 
+% Pdes1 = ss(tf([1],[1, 0]))
+% Pdes2 = add_low_frequency_disturbance(Pdes1, 1)
+
+% Kp = 4/Tsettle
+% sCL = -Kp
+% sESO = g*sCL
+% l1 = -2sESO
+% l2 = sESO^2
+% K = [k1; k2;;]
+
+\begin{align}
+	K_P &= \dfrac{4}{T_s} \\
+	l_1 &= -2gK_P \\
+	l_2 &= g^2K_P^2
+\end{align}
+where $g$ is a multiplier that determines how much faster the observer poles are compared to the closed-loop poles associated with the plant. In the experiment section for first-order systems in \cite{herbst2013simulative}, $T_s = 1$, $g = 10, K = T = 1$ are used.
+
+\subsection{First-order linear ADRC as a transfer function}
+When represented as a transfer function, the ADRC controller detailed above can be written as
+
+% Cr =  4*T_s^2s^2 + 32*T_s*gs + 64*g^2
+% -----------------------------------------------------------
+% 1*T_s^3s^2 + 8*T_s^2*g + 4*T_s^2s
+
+% Cy = -16*T_s*g^2 - 32*T_s*gs + -64*g^2
+% ----------------------------------------------------------------
+%   1*T_s^3s^2 + 8*T_s^2*g + 4*T_s^2s
+
+
+\begin{align}
+	C_{ADRC}(s) = \bmatrixx{C_r(s) & C_y(s)}\\
+	C_r(s) = \dfrac{4T_{s}^2s^2 + 32T_{s}gs + 64g^2}{T_{s}^3s^2 + T_{s}^2(8g + 4)s} \\
+	C_y(s) = \dfrac{- 32T_{s}gs -(16T_{s} + 64)g^2}{s(T_{s}^3s + T_{s}^2(8g + 4))}
+\end{align}
+(note how $C_y$ has negative feedback built in). Compare $C_y(s)$ to the transfer function of a PI controller with lowpass filter
+$$C_{PIF} = \big(k_p + k_i/s \big)\dfrac{1}{T_f s + 1} = \dfrac{k_p s + k_i}{s(T_f s + 1)}$$
+it becomes clear that we can pick $k_p, k_i, T_f$ so that the PI controller becomes identical to the feedback part of the ADRC controller, $C_y$:
+\begin{align}
+	k_p &= \dfrac{-4 g^2 - 8 g}{T_s(2 g + 1)} \label{eq:kp}\\
+	k_i &= \dfrac{-16 g^2}{T_s^2(2g + 1)} \label{eq:ki}\\
+	T_f &= \dfrac{T_s}{8 g + 4} \label{eq:Tf}
+\end{align}
+
+
+
+The feedforward part, $C_r$, can similarly be shown to be equivalent to a first-order filtered PID controller, but more interestingly, we can show approximate $C_r$ as $C_y$ with set-point weighting on the proportional term, but without the lowpass filter. To do this, we introduce the 2DOF PI controller $K_{ry}$ with set-point weight $b$, defined by the transfer function between $r,y$ and $u$ in the expression
+$$K_{ry}(s) : u = k_p (br - y) + k_i(r-y)\frac{1}{s}$$
+to $b = K_P / k_p$ where $K_P$ is the proportional gain in the ADRC controller and $k_p$ is the proportional gain in the equivalent PID controller obtained by matching $C_y$ to $C_{PIF}$. With this choice of $b$, the feedforward part of the 2DOF PI controller will have the following low and high-frequency asymptotes:
+\begin{align}
+	s &\to 0:  & \quad C_r(s) &\to \dfrac{16g^2}{T_{s}^2(2g + 1)s} \\
+	s &\to 0:  & \quad K_{ry}(s) &\to \dfrac{k_i}{s} 
+\end{align}
+
+where we can identify that $K_{ry} \to C_r$ as $s \to 0$.
+
+In the other direction, we have
+\begin{align}
+	s &\to \infty:  & \quad C_r(s) &\to \dfrac{4}{T_s} = K_P\\
+	s &\to \infty:  & \quad K_{ry}(s) &\to b k_p = \frac{K_P}{k_p} = K_P
+\end{align}
+
+We thus have the same gain from $r$ to $u$ through $K_{ry}$ as we have through the ADRC controller $C_r$ as $s \to 0$ and as $s \to \infty$, with a small discrepancy around the crossover frequency. Bode curves demonstrating this will be shown for the example provided in \cite{herbst2013simulative} in \cref{sec:numerical}.
+
+\subsection{Second-order linear ADRC}
+In a similar fashion we can establish equivalence between the second-order linear ADRC controller and a PID controller with set-point weighting and a second-order lowpass filter on the measurement signal, given by the transfer function between $r,y$ and $u$ in the expression:
+$$K_{PIDF}(s) : u = \dfrac{k_p (br - y) + (r-y)\frac{k_i}{s} + (0r - y)k_d s}{T_f^2s^2 + 2T_f d s + 1}$$
+where $d$ is a relative damping parameter of the filter and $T_f$ is the time constant of the filter. We explicitly included the zero term $0r$ in the derivative part to highlight that set-point weight in the derivative term is zero, while $b$ generally is not.
+
+The expressions for $k_p, k_i, k_d, T_f, d$ are more complicated than for the first-order case, but can be derived by matching the transfer function of the ADRC controller to the transfer function of the PID controller in a similar fashion. The expressions are provided in the appendix, and the source code used to symbolically solve for them is provided in \cite{repo}.
+
+\section{Numerical results} \label{sec:numerical}
+This section will demonstrate the equivalence between linear ADRC and the proposed equivalent PI(D) controllers numerically, using the same plant model as the one used in \cite{herbst2013simulative}. The plant model is a first-order system with $T = 1$ and $K = 1$, and the ADRC controller is tuned with $T_s = 1$ and $g = 10$. The parameters for the PI(D) controllers are found using \cref{eq:kp,eq:ki,eq:Tf}.
+
+The code to reproduce the results is available in \cite{repo}.
+
+\subsection{First-order system}
+
+We compare three different controllers, the ADRC controller suggested in \cite{herbst2013simulative}, the PI controller suggested by \cite{herbst2013simulative}, as well as the filtered PI controller with approximation in the reference response suggested in this paper, $K_{ry}$.
+
+We start by reproducing the experiment where the parameters of the plant, $T,K$, are varied to simulate model uncertainty. The result is shown in \cref{fig:first_order_K}. As is evident from the figure, the PID controller suggested by \cite{herbst2013simulative} performs much worse than the ADRC controller as $K$ deviates from the nominal value of 1. The "equivalent PID" proposed in this paper performs more or less identically to the ADRC controller, despite the slight approximation. We will look further at this approximation soon, but first we will vary the plant parameter $T$ as well.
+% K = 1
+% T = 1
+% Ku = ([0.1, 0.2, 0.5, 1, 2, 5, 10])
+% Tu = ([0.1, 0.2, 0.5, 1, 2, 5, 10])
+% Pu = tf([Ku],[1, T])
+First, we let $K$ take values in the set $\{0.1, 0.2, 0.5, 1, 2, 5, 10\}$.
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.5\textwidth]{figures/first_order_K.pdf}
+	\caption{Step response from $r$ to $y$  of the closed loop with different values of the plant gain $K$.}
+	\label{fig:first_order_K}
+\end{figure}
+
+Next, we let $T$ take values in the set $\{0.1, 0.2, 0.5, 1, 2, 5, 10\}$:
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.5\textwidth]{figures/first_order_T.pdf}
+	\caption{Step response from $r$ to $y$  of the closed loop with different values of the plant time constant $T$.}
+	\label{fig:first_order_T}
+\end{figure}
+once again, the PI controller tuned in \cite{herbst2013simulative} performs poorly, but the ADRC controller and the equivalent PI controller performs well.
+
+To understand why the "suggested PI" controller performs poorly, we look at the controller transfer functions, shown in \cref{fig:first_order_bode_C}.
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.5\textwidth]{figures/first_order_bode_C.pdf}
+	\caption{Bode plot of the controllers.}
+	\label{fig:first_order_bode_C}
+\end{figure}
+We see that the ADRC controller has much higher gain in general, but high-frequeny rolloff in the response to measurements. We also see that the approximation made to the response from references in the equivalent PI controller is very small (the difference between the blue and the green curve in the left pane). The equivalent PI controller is equivalent to the ADRC transfer function in the response from measurements (right pane).
+
+The (nominal) closed-loop response from references to output, $G_{yr}$, are almost identical between the three controllers, show in \cref{fig:first_order_bode_ry}.
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.5\textwidth]{figures/first_order_bode_ry.pdf}
+	\caption{Bode plot of the closed-loop response from references.}
+	\label{fig:first_order_bode_ry}
+\end{figure}
+
+but the (nominal) closed-loop response from measurements (and noise) to control signal, $G_{uy}$, are not, shown in \cref{fig:first_order_bode_uy}.
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.5\textwidth]{figures/first_order_bode_uy.pdf}
+	\caption{Bode plot of the closed-loop response from measurements.}
+	\label{fig:first_order_bode_uy}
+\end{figure}
+Here, it is clearly visible that the ADRC controller and the suggested PI contr0ller are very different, where the former has significantly higher gain at intermediate frequencies, but rolloff for high frequencies.
+
+\subsection{Second-order system}
+The second-order system used in the experiment section in \cite{herbst2013simulative} is given by
+% K = 1
+% D = 1
+% T = 1
+% P = tf([K],[T^2, 2D*T, 1])
+$$P(s) = \dfrac{1}{T^2s^2 + 2DTs + 1} = \dfrac{1}{s^2 + 2s + 1}$$
+
+We show the same figures as for the first-order system
+\begin{itemize}
+	\item \cref{fig:second_order_K} shows the step response as the value of $K$ varies.
+	\item \cref{fig:second_order_T} shows the step response as the value of $T$ varies.
+	\item \cref{fig:second_order_bode_C} shows the Bode plot of the controllers.
+	\item \cref{fig:second_order_bode_ry} shows the Bode plot of the closed-loop response from references to output.
+	\item \cref{fig:second_order_bode_uy} shows the Bode plot of the closed-loop response from measurements to control signal.
+\end{itemize}
+The conclusions are largely the same for second-order systems. The response from measurements is identical between the ADRC controller and the equivalent PID contorller. The reponse to references is slightly different, visible in the bode plot, but not different enough to be clearly visible in the step responses with varying plant parameters.
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.5\textwidth]{figures/second_order_K.pdf}
+	\caption{Step response from $r$ to $y$ of the closed loop with different values of the plant gain $K$.}
+	\label{fig:second_order_K}
+\end{figure}
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.5\textwidth]{figures/second_order_T.pdf}
+	\caption{Step response from $r$ to $y$ of the closed loop with different values of the plant time constant $T$.}
+	\label{fig:second_order_T}
+\end{figure}
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.5\textwidth]{figures/second_order_bode_C.pdf}
+	\caption{Bode plot of the controllers.}
+	\label{fig:second_order_bode_C}
+\end{figure}
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.5\textwidth]{figures/second_order_bode_ry.pdf}
+	\caption{Bode plot of the closed-loop response from references.}
+	\label{fig:second_order_bode_ry}
+\end{figure}
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.5\textwidth]{figures/second_order_bode_uy.pdf}
+	\caption{Bode plot of the closed-loop response from measurements.}
+	\label{fig:second_order_bode_uy}
+\end{figure}
+
+\section{Conclusion}
+
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\end{document}

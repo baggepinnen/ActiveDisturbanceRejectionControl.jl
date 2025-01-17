@@ -11,6 +11,7 @@ Base.oneunit(::Type{Any}) = Num(1)
 Base.inv(A::Matrix{Any}) = inv(identity.(A))
 
 using ControlSystemsBase, Plots, RobustAndOptimalControl, Test, LinearAlgebra
+default(margin=4Plots.mm, l=3, titlefontsize=12)
 t = 0:0.001:2
 
 # The plant model used in experiments
@@ -99,10 +100,10 @@ Cy = Ca[:u,:y]
 
 C_suggested_pid = pid(3.85, 3.85, form=:parallel)
 C_equivalent_pid = equivalent_pid(Tsettle, ogain, simplified_r=true)
-label = ["ADRC" "Suggested PID" "Equivalent PID (simp.)"]
+label = ["ADRC" "Suggested PI" "Equivalent PIF"]
 
 feedback2d(P, Ca) = feedback(P, -Ca[:u, :y])*(Ca[:u, :r])
-gangoffourplot(P, [Ca[:u,:y], C_suggested_pid, C_equivalent_pid[:u,:y]]; label)
+gangoffourplot(P, [Ca[:u,:y], C_suggested_pid, C_equivalent_pid[:u,:y]]; label, background_color_legend=nothing, foreground_color_legend=nothing)
 
 
 
@@ -112,7 +113,8 @@ gangoffourplot(P, [Ca[:u,:y], C_suggested_pid, C_equivalent_pid[:u,:y]]; label)
 # ADRC controller has overall higher gain
 # It looks like a PI controller from r, and a filtered PI controller from y
 # Overall, it has a much higher low-frequency gain but rolloff from measurements
-bodeplot([Ca, [C_suggested_pid -C_suggested_pid], C_equivalent_pid]; label=repeat(label, inner=(1,2)))
+bodeplot([Ca, [C_suggested_pid -C_suggested_pid], C_equivalent_pid]; label=repeat(label, inner=(1,4)), background_color_legend=nothing, foreground_color_legend=nothing, title=["\$G_{ur}\$" "\$G_{uy}\$" "" ""], legend=[false true false false], linestyle=repeat([:solid :solid :dash], inner=(1,4)))
+savefig("paper/figures/first_order_bode_C.pdf")
 
 # Cr looks _almost_ like a non-filtered PI contorller (as opposed to a filtered PID contorller) We can identify the parameters of this simplified PI controller by matching the asymptotes of the two controllers. The low-frequency asymptote is given by ki, and the high-frequency asymptote is given by kpr. The high-frequency asymptote is given by the limit of Cr when s → ∞, which simlifies to the Kp used in the adrc controller.
 # Cpidr2 = pid(4/Tsettle, kir, form=:parallel)
@@ -122,10 +124,12 @@ bodeplot([Ca, [C_suggested_pid -C_suggested_pid], C_equivalent_pid]; label=repea
 plot(step.([feedback2d(P, Ca), feedback(P*C_suggested_pid), feedback2d(P, C_equivalent_pid)], Ref(t)); label)
 
 # So are closed-loop tf from r -> y 
-bodeplot([feedback2d(P, Ca), feedback(P*C_suggested_pid), feedback2d(P, C_equivalent_pid)]; label=repeat(label, inner=(1,2)), title="Gry")
+bodeplot([feedback2d(P, Ca), feedback(P*C_suggested_pid), feedback2d(P, C_equivalent_pid)]; label=repeat(label, inner=(1,2)), title="\$G_{ry}\$", linestyle=repeat([:solid :solid :dash], inner=(1,2)))
+savefig("paper/figures/first_order_bode_ry.pdf")
 
 # Bode plots from y -> u look different, ADRC is tuned much more aggressively but uses rolloff
-bodeplot([G_CS(P, -Ca[:u, :y]), G_CS(P, C_suggested_pid), G_CS(P, -C_equivalent_pid[:u, :y])]; label=repeat(label, inner=(1,2)), title="Gyu", legend=:topleft, background_color_legend=nothing, foreground_color_legend=nothing)
+bodeplot([G_CS(P, -Ca[:u, :y]), G_CS(P, C_suggested_pid), G_CS(P, -C_equivalent_pid[:u, :y])]; label=repeat(label, inner=(1,2)), title="\$G_{yu}\$", legend=[:topleft false], background_color_legend=nothing, foreground_color_legend=nothing, linestyle=repeat([:solid :solid :dash], inner=(1,2)), l=3)
+savefig("paper/figures/first_order_bode_uy.pdf")
 
 ## Reproduce response-plots from 
 using MonteCarloMeasurements
@@ -138,15 +142,16 @@ plot(step.([
     feedback2d(Pu, Ca),
     feedback(Pu*C_suggested_pid),
     feedback2d(Pu, C_equivalent_pid)
-], Ref(t)); label, ri=false, layout=(1,3), sp=(1:3)', size=(800,400), ylabel="y")
+], Ref(t)); label, ri=false, layout=(1,3), sp=(1:3)', size=(800,400), ylabel="y", c=[1 2 3])
+savefig("paper/figures/first_order_K.pdf")
 
 Pu = tf([K],[1, Tu])
 plot(step.([
     feedback2d(Pu, Ca),
     feedback(Pu*C_suggested_pid),
     feedback2d(Pu, C_equivalent_pid)
-], Ref(t)); label, ri=false, layout=(1,3), sp=(1:3)', size=(800,400), ylabel="y")
-
+], Ref(t)); label, ri=false, layout=(1,3), sp=(1:3)', size=(800,400), ylabel="y", c=[1 2 3])
+savefig("paper/figures/first_order_T.pdf")
 
 # ## 
 

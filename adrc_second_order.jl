@@ -12,6 +12,7 @@ Base.inv(A::Matrix{Any}) = inv(identity.(A))
 Base.convert(::Type{T}, x::AbstractArray{Num}) where T <: Array{Num} = T(map(Num, x)) # https://github.com/JuliaSymbolics/Symbolics.jl/issues/1405
 
 using ControlSystemsBase, Plots, RobustAndOptimalControl, Test, LinearAlgebra
+default(margin=4Plots.mm, l=3, titlefontsize=12)
 t = 0:0.002:15
 
 # The plant model used in experiments
@@ -125,7 +126,7 @@ TZ1 = TZ2 = T
 T1 = 0.2
 C_suggested_pid = Ki * (1+TZ1*s)*(1 + TZ2*s) / (s*(1 + T1*s))
 C_equivalent_pid = equivalent_pid(Tsettle, ogain; simplified_r=true)
-label = ["ADRC" "Suggested PID" "Equivalent PID (simp.)"]
+label = ["ADRC" "Suggested PID" "Equivalent PIDF"]
 
 w = exp10.(LinRange(-2, 2, 200))
 gangoffourplot(P, [Ca[:u,:y], C_suggested_pid, C_equivalent_pid[:u,:y]]; label)
@@ -140,16 +141,19 @@ feedback2d(P, Ca) = feedback(P, Ca[:u, :y], pos_feedback=true)*(Ca[:u, :r])
 # ADRC controller has overall much higher gain
 # It looks like a PI controller from r, and a filtered PID controller from y
 # Overall, it has a much higher gain but rolloff from measurements
-bodeplot([Ca, [C_suggested_pid -C_suggested_pid], C_equivalent_pid], w; label=repeat(label, inner=(1,4)), background_color_legend=nothing, foreground_color_legend=nothing)
+bodeplot([Ca, [C_suggested_pid -C_suggested_pid], C_equivalent_pid], w; label=repeat(label, inner=(1,4)), background_color_legend=nothing, foreground_color_legend=nothing, title=["\$G_{ur}\$" "\$G_{uy}\$" "" ""], legend=[true false false false], linestyle=repeat([:solid :solid :dash], inner=(1,4)))
+savefig("paper/figures/second_order_bode_C.pdf")
 
 # Step responses from r are almost identical
 plot(step.([feedback2d(P, Ca), feedback(P*C_suggested_pid), feedback2d(P, C_equivalent_pid)], Ref(t)); label)
 
 # So are closed-loop tf from r -> y 
-bodeplot([feedback2d(P, Ca), feedback(P*C_suggested_pid), feedback2d(P, C_equivalent_pid)], w; label=repeat(label, inner=(1,2)), title="Gry", background_color_legend=nothing, foreground_color_legend=nothing)
+bodeplot([feedback2d(P, Ca), feedback(P*C_suggested_pid), feedback2d(P, C_equivalent_pid)], w; label=repeat(label, inner=(1,2)), title="\$G_{ry}\$", linestyle=repeat([:solid :solid :dash], inner=(1,2)))
+savefig("paper/figures/second_order_bode_ry.pdf")
 
 # Bode plots from y -> u look different, ADRC is tuned much more aggressively but uses rolloff. The equivalent PID is identical to ADRC
-bodeplot([G_CS(P, -Ca[:u, :y]), G_CS(P, C_suggested_pid), G_CS(P, -C_equivalent_pid[:u, :y])]; label=repeat(label, inner=(1,2)), title="Gyu", legend=:topleft, background_color_legend=nothing, foreground_color_legend=nothing)
+bodeplot([G_CS(P, -Ca[:u, :y]), G_CS(P, C_suggested_pid), G_CS(P, -C_equivalent_pid[:u, :y])]; label=repeat(label, inner=(1,2)), title="\$G_{yu}\$", legend=[:topleft false], background_color_legend=nothing, foreground_color_legend=nothing, linestyle=repeat([:solid :solid :dash], inner=(1,2)), l=3)
+savefig("paper/figures/second_order_bode_uy.pdf")
 
 ## Reproduce response-plots from 
 using MonteCarloMeasurements
@@ -162,14 +166,16 @@ plot(step.([
     feedback2d(Pu, Ca),
     feedback(Pu*C_suggested_pid),
     feedback2d(Pu, C_equivalent_pid)
-], Ref(t)); label, ri=false, layout=(1,3), sp=(1:3)', size=(800,400), ylabel="y")
+], Ref(t)); label, ri=false, layout=(1,3), sp=(1:3)', size=(800,400), ylabel="y", c=[1 2 3])
+savefig("paper/figures/second_order_K.pdf")
 
 Pu = tf([K],[1, Tu])
 plot(step.([
     feedback2d(Pu, Ca),
     feedback(Pu*C_suggested_pid),
     feedback2d(Pu, C_equivalent_pid)
-], Ref(t)); label, ri=false, layout=(1,3), sp=(1:3)', size=(800,400), ylabel="y")
+], Ref(t)); label, ri=false, layout=(1,3), sp=(1:3)', size=(800,400), ylabel="y", c=[1 2 3])
+savefig("paper/figures/second_order_T.pdf")
 
 
 ## To figure this out, we propagate symbolic variables through the adrc constructor

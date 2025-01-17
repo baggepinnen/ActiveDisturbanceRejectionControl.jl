@@ -4,9 +4,11 @@ using Pkg
 Pkg.activate(".")
 
 using Symbolics
-# NOTE: extreme hack to workaround https://github.com/JuliaSymbolics/Symbolics.jl/issues/1404
+# NOTE: extreme hacks to workaround https://github.com/JuliaSymbolics/Symbolics.jl/issues/1404
 Base.zero(::Type{Any}) = Num(0)
 Base.one(::Type{Any}) = Num(1)
+Base.oneunit(::Type{Any}) = Num(1)
+Base.inv(A::Matrix{Any}) = inv(identity.(A))
 Base.convert(::Type{T}, x::AbstractArray{Num}) where T <: Array{Num} = T(map(Num, x)) # https://github.com/JuliaSymbolics/Symbolics.jl/issues/1405
 
 using ControlSystemsBase, Plots, RobustAndOptimalControl, Test, LinearAlgebra
@@ -36,7 +38,6 @@ function adrc(Tsettle, ogain, b0 = 1)
     k2 = 3sESO^2
     k3 = -sESO^3
     K = T[k1; k2; k3;;]
-    # L = [Kp/b0 1/b0]
 
     obs = observer_filter(Pdes2, K, output_state=true)
 
@@ -72,31 +73,16 @@ function adrc(Tsettle, ogain, b0 = 1)
     connect(systems, connections; external_inputs, external_outputs, unique=true) #* diagm([1, -1])
 end
 
-"""
-Convert from ``1 / ((sT_f)^2/(4d^2) + sT_f + 1)`` to ``ω^2 / (s^2 + 2ζω s + ω^2)``
-"""
-function Tfd2wd(Tf, d)
-    0 ≤ d ≤ 2 || error("The damping ratio must be between 0 and 2, but got $d")
-    ω = 2d/Tf
-    ζ = d
-    ω, ζ
-end
-
-function wd2Tfd(w, d)
-    Tf = 2d/w
-    Tf, d
-end
-
-function pid_2dof_2filt(kp, ki, kd, T, d, b, c)
+function pid_2dof_2filt(kp, ki, kd, Tf, d, b, c)
     # r through filter
-    tempA = [0 0 1; 1 0 0; -1 / (T^2) 0 (-2d) / T]
-    tempB = [0 0; 1 0; c / (T^2) -1 / (T^2)]
+    tempA = [0 0 1; 1 0 0; -1 / (Tf^2) 0 (-2d) / Tf]
+    tempB = [0 0; 1 0; c / (Tf^2) -1 / (Tf^2)]
     tempC = [kp ki kd]
     tempD = [b*kp 0]
 
     named_ss(ss(tempA, tempB, tempC, tempD), "PID", u=[:r, :y], y=:u)
 end
-filt(Ty, dy) = tf(1, [Ty^2, 2dy*Ty, 1])
+filt(Tf, d) = tf(1, [Tf^2, 2d*Tf, 1])
 
 ##
 
@@ -141,6 +127,7 @@ C_suggested_pid = Ki * (1+TZ1*s)*(1 + TZ2*s) / (s*(1 + T1*s))
 C_equivalent_pid = equivalent_pid(Tsettle, ogain; simplified_r=true)
 label = ["ADRC" "Suggested PID" "Equivalent PID (simp.)"]
 
+w = exp10.(LinRange(-2, 2, 200))
 gangoffourplot(P, [Ca[:u,:y], C_suggested_pid, C_equivalent_pid[:u,:y]]; label)
 
 ##
@@ -190,7 +177,7 @@ using Symbolics, SymbolicControlSystems
 @variables Tsettle ogain b0
 K = adrc(Tsettle, ogain)#, b0)
 K = ss(identity.(K.A), identity.(K.B), identity.(K.C), identity.(K.D))
-ex = Num(K)
+ex = [Num(K[1,1]) Num(K[1,2])]
 tf.(ex)
 # We then simply match the coefficients for each order of s, obtaining a system of equations that we can solve for the PID parameters
 # The PID controllers on symbolic form are constructed below

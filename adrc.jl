@@ -3,6 +3,13 @@ cd(@__DIR__)
 using Pkg
 Pkg.activate(".")
 
+using Symbolics
+# NOTE: extreme hacks to workaround https://github.com/JuliaSymbolics/Symbolics.jl/issues/1404
+Base.zero(::Type{Any}) = Num(0)
+Base.one(::Type{Any}) = Num(1)
+Base.oneunit(::Type{Any}) = Num(1)
+Base.inv(A::Matrix{Any}) = inv(identity.(A))
+
 using ControlSystemsBase, Plots, RobustAndOptimalControl, Test, LinearAlgebra
 t = 0:0.001:2
 
@@ -29,7 +36,6 @@ function adrc(Tsettle, ogain)
     k1 = -2sESO
     k2 = sESO^2
     K = [k1; k2;;]
-    # L = [Kp/b0 1/b0]
 
     obs = observer_filter(Pdes2, K, output_state=true)
 
@@ -55,7 +61,7 @@ function adrc(Tsettle, ogain)
     external_inputs = [:r, :y]
     external_outputs = [:u]
     
-    connect(systems, connections; external_inputs, external_outputs, unique=true) #* diagm([1, -1])
+    connect(systems, connections; external_inputs, external_outputs, unique=true)
 end
 
 """
@@ -73,7 +79,6 @@ function equivalent_pid(Tsettle, ogain; simplified_r = true)
     
     C = if simplified_r
         b = 4/Tsettle / kpy # Found by matching asymptotes
-        # Cpidr = pid(4/Tsettle, kir, form=:parallel) # Equivalent if concatenated with Cpidy below
         pid_2dof(kpy, ki; b, form=:parallel) * [tf(1) 0; 0 tf(1, [T, 1])]
     else
         Cpidy = pid(kpy, ki, form=:parallel)*tf(1, [T, 1])
@@ -154,7 +159,7 @@ using Symbolics, SymbolicControlSystems
 @variables vTsettle vogain vb0
 K = adrc(vTsettle, vogain)#, vb0)
 K = ss(identity.(K.A), identity.(K.B), identity.(K.C), identity.(K.D))
-ex = Num(K)
+ex = [Num(K[1,1]) Num(K[1,2])]
 tf.(ex)
 # We then simply match the coefficients for each order of s, obtaining a system of equations that we can solve for the PID parameters
 # The PID controllers on symbolic form are constructed below
@@ -183,7 +188,6 @@ vars = [kp, ki, Tf]
 
 sol = sp.solve(eqs, vars)
 
-soli = 2
-@show kpy = sols[kp]
-@show kiy = sols[ki]
-@show Ty =  sols[Tf]
+@show kpy = sol[kp]
+@show kiy = sol[ki]
+@show Ty =  sol[Tf]

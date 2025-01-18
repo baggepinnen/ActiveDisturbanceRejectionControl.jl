@@ -63,7 +63,7 @@
 \maketitle
 
 \begin{abstract}
-We show that linear Active Disturbance-Rejection Control (ADRC) is equivalent to PI(D) control with set-point weighting and a lowpass filter on the measurement signal. We also provide expressions that make it possible to implement linear ADRC for first and second-order systems using commonplace two degree-of-freedom PID implementations. The expressions are equivalent to ADRC in the response from measurements, and a slight approximation in the response from references.
+We show that linear Active Disturbance-Rejection Control (ADRC) tuned using the "bandwidth method" is equivalent to PI(D) control with set-point weighting and a lowpass filter on the measurement signal. We also provide simple expressions that make it possible to implement linear ADRC for first and second-order systems using commonplace two degree-of-freedom PID implementations. The expressions are equivalent to ADRC in the response from measurements, and a slight approximation in the response from references.
 \end{abstract}
 
 
@@ -98,11 +98,11 @@ which gives $b_0 = K/T$. The parameters as dictated by the bandwidth tuning rule
 % K = [k1; k2;;]
 
 \begin{align}
-	K_P &= \dfrac{4}{T_s} \\
-	l_1 &= -2gK_P \\
-	l_2 &= g^2K_P^2
+	K_P = \dfrac{4}{T_s} \quad  l_1 = -2gK_P \quad	l_2 = g^2K_P^2
 \end{align}
 where $g$ is a multiplier that determines how much faster the observer poles are compared to the closed-loop poles associated with the plant. In the experiment section for first-order systems in \cite{herbst2013simulative}, $T_s = 1$, $g = 10, K = T = 1$ are used.
+
+For deeper technical details and the formulation for second-order systems, we refer the reader to \cite{herbst2013simulative}.
 
 \subsection{First-order linear ADRC and PID}
 \subsubsection{Transfer functions}
@@ -242,6 +242,14 @@ but the (nominal) closed-loop response from measurements (and noise) to control 
 \end{figure}
 Here, it is clearly visible that the ADRC controller and the suggested PI controller are very different, where the former has significantly higher gain at intermediate frequencies, but rolloff for high frequencies.
 
+
+\begin{figure*}%[h]
+	\centering
+	\includegraphics[width=\textwidth]{figures/first_order_7.pdf}
+	\caption{Gang-of-seven plot for the first-order system. The ADRC controller is shown in blue, the PI controller suggested in \cite{herbst2013simulative} is shown in orange, and the equivalent PI controller proposed in this paper is shown in green. The ADRC and the equivalent PI controller are identical in most transfer functions (all solid lines, including only the loop-transfer function) and are hard to distinguish in the plots. The equivalent PI controller does differ slightly from the ADRC controller in the response from references (dashed lines). The plots show the sensitivity function $S = 1/(1+PC)$ (top left), the input disturbance rejection $PS = P/(1+PC)$ (top right), the measurement noise amplification in the control signal $CS = C/(1+PC)$ (bottom left), and the complementary sensitivity function $T = PC/(1+PC)$ (bottom right). Where relevant, the transfer function post multiplied by $F = -C_r / C_y$ is shown as well, indicating the response from references.}
+	\label{fig:first_order_7}
+\end{figure*}
+
 \subsection{Second-Order System}
 The second-order system used in the experiment section in \cite{herbst2013simulative} is given by
 % K = 1
@@ -257,6 +265,7 @@ We show the same figures as for the first-order system
 	\item \cref{fig:second_order_bode_C} shows the Bode plot of the controllers.
 	\item \cref{fig:second_order_bode_ry} shows the Bode plot of the closed-loop response from references to output.
 	\item \cref{fig:second_order_bode_uy} shows the Bode plot of the closed-loop response from measurements to control signal.
+	\item \cref{fig:second_order_7} shows the gang-of-seven for the second-order system.
 \end{itemize}
 The conclusions are largely the same for second-order systems. The response from measurements is identical between the ADRC controller and the equivalent PID controller. The response to references is slightly different, visible in the bode plot, but not different enough to be clearly visible in the step responses with varying plant parameters.
 
@@ -291,7 +300,23 @@ The conclusions are largely the same for second-order systems. The response from
 	\label{fig:second_order_bode_uy}
 \end{figure}
 
-\clearpage
+\begin{figure*}%[h]
+	\centering
+	\includegraphics[width=\textwidth]{figures/second_order_7.pdf}
+	\caption{Gang-of-seven plot for the second-order system. The ADRC controller is shown in blue, the PID controller suggested in \cite{herbst2013simulative} is shown in orange, and the equivalent PIDF controller proposed in this paper is shown in green. The ADRC and the equivalent PIDF controller are identical in most transfer functions (all solid lines, including only the loop-transfer function) and are hard to distinguish in the plots. The equivalent PIDF controller does differ slightly from the ADRC controller in the response from references (dashed lines). The plots show the sensitivity function $S = 1/(1+PC)$ (top left), the input disturbance rejection $PS = P/(1+PC)$ (top right), the measurement noise amplification in the control signal $CS = C/(1+PC)$ (bottom left), and the complementary sensitivity function $T = PC/(1+PC)$ (bottom right). Where relevant, the transfer function post multiplied by $F = -C_r / C_y$ is shown as well, indicating the response from references.}
+	\label{fig:second_order_7}
+\end{figure*}
+
+
+\section{Discussion}
+Given the often reported finding that ADRC controllers are easy to tune and robust w.r.t. plant variations \cite{herbst2013simulative}, the findings in this paper are good news; Not only is the ubiquitous PI(D) controller able to be equally robust and easy to tune, it may in fact be equivalent to the linear ADRC controller. The general concept behind ADRC, that of state feedback from a disturbance observer, is of course much more general. Model-based methods may incorporate more sophisticated knowledge of both the plant and any disturbances acting on it, extending also to nonlinear models. Among model-free and easy-to-use control methods, however, the PI(D) controller remains a strong contender. The fact that the PI(D) controller often comes up short in comparison to ADRC controllers in the literature can often be attributed to either poor tuning or failure to use set-point weighting or filtering, concepts that are commonplace in practical PI(D) controllers. If a filtered 2DOF implementation of a PI(D) controller is used, the ADRC tuning rule can be used to tune also the PID controller if the user so prefers. We end the discussion with a quote from Karl Johan Åström, from one of his many lectures on the principles of feedback:
+
+\begin{quotation}
+	It may be strongly misleading to only show properties of a few systems for example the response of the output to command signals. A common omission in many papers and books.\\
+	- Karl Johan Åström in "Feedback Fundamentals", 2019
+\end{quotation}
+
+
 \section{Conclusion}
 We have demonstrated the equivalence between linear ADRC with parameters selected using the bandwidth method, and a PI(D) controller with set-point weighting and a lowpass filter on the measurement signal. The equivalence is exact in the response from measurements, and a slight approximation in the response from references. 
 

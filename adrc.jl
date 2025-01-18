@@ -207,7 +207,7 @@ to_latex(equivalent_pid(T_s, g, simplified_r=true).C) |> println
 to_latex(equivalent_pid(T_s, g, simplified_r=true).D) |> println 
 
 ## Gang of seven
-
+# TODO: upstream
 function Base.vect(X::LTISystem...)
     LTISystem[X...]
 end
@@ -226,11 +226,13 @@ function gangofsevenplot(P, C, F, args...; c, name="", kwargs...)
     bodeplot!(RY, args...; show=false, title="\$T = PC/(1+PC)\$", lab="$name: \$TF = r\\to y\$", l=(:dash,), c, sp=4, plotphase=false, kwargs...)
     bodeplot!(RU, args...; show=false, title="\$CS = C/(1+PC)\$", lab="$name: \$CSF = r\\to u\$", l=(:dash,), c, sp=3, plotphase=false, kwargs...)
 end
+default(titlefontsize=14, legendfontsize=8)
 w = exp10.(LinRange(-2, 4, 200))
 F = tf(Cr) / tf(-Cy) # This computes the equivalent reference prefilter appearing before the error calculation
-plot(; layout=4, ticks=:default, xscale=:log10, size=(800,800))#, link=:both)
+plot(; layout=4, ticks=:default, xscale=:log10, size=(1200,700))#, link=:both)
 gangofsevenplot(P, -tf(Cy), F, w; name="ADRC", c=1, background_color_legend=nothing, foreground_color_legend=nothing)
 gangofsevenplot(P, C_suggested_pid, tf(1), w; name="Suggested PID", label, c=2, background_color_legend=nothing, foreground_color_legend=nothing)
 
 F_equivalent_pid = tf(C_equivalent_pid[:u,:r]) / tf(-C_equivalent_pid[:u,:y])
 gangofsevenplot(P, -tf(C_equivalent_pid[:u,:y]), F_equivalent_pid, w; name="Equivalent PID", c=3, background_color_legend=nothing, foreground_color_legend=nothing, linestyle=:dot)
+savefig("paper/figures/first_order_7.pdf")

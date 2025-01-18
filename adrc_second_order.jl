@@ -252,3 +252,30 @@ sp.latex(sp.simplify.(equivalent_pid(T_s, g, simplified_r=true).A))
 sp.latex(sp.simplify.(equivalent_pid(T_s, g, simplified_r=true).B))
 sp.latex(sp.simplify.(equivalent_pid(T_s, g, simplified_r=true).C))
 sp.latex(sp.simplify.(equivalent_pid(T_s, g, simplified_r=true).D))
+
+##
+
+function gangofsevenplot(P, C, F, args...; c, name="", kwargs...)
+    S,D,CS,T = gangoffour(P,C)
+    RY = T*F
+    RU = CS*F
+    RE = S*F
+    bodeplot!(S, args...; show=false, title="\$S = 1/(1+PC)\$", lab="$name: \$S\$", c, sp=1, plotphase=false, legend=:bottomright, kwargs...)
+    bodeplot!(D, args...; show=false, title="\$PS = P/(1+PC)\$", lab="$name: \$PS\$", c, sp=2, plotphase=false, legend=:bottom, kwargs...)
+    bodeplot!(CS, args...; show=false, title="\$CS = C/(1+PC)\$", lab="$name: \$CS\$", c, sp=3, plotphase=false, legend=:topleft, kwargs...)
+    bodeplot!(T, args...; show=false, title="\$T = PC/(1+PC)\$", lab="$name: \$T\$", c, sp=4, plotphase=false, legend=:bottomleft, kwargs...)
+    Plots.hline!([1], l=(:black, :dash, 1), primary=false, sp=4)
+    bodeplot!(RE, args...; show=false, title="\$S = 1/(1+PC)\$", lab="$name: \$SF\$", l=(:dash,), c, sp=1, plotphase=false, kwargs...)
+    bodeplot!(RY, args...; show=false, title="\$T = PC/(1+PC)\$", lab="$name: \$TF = r\\to y\$", l=(:dash,), c, sp=4, plotphase=false, kwargs...)
+    bodeplot!(RU, args...; show=false, title="\$CS = C/(1+PC)\$", lab="$name: \$CSF\$", l=(:dash,), c, sp=3, plotphase=false, kwargs...)
+end
+default(titlefontsize=14, legendfontsize=8)
+w = exp10.(LinRange(-2, 4, 200))
+F = tf(Cr) / tf(-Cy) # This computes the equivalent reference prefilter appearing before the error calculation
+plot(; layout=4, ticks=:default, xscale=:log10, size=(1200,700))#, link=:both)
+gangofsevenplot(P, -tf(Cy), F, w; name="ADRC", c=1, background_color_legend=nothing, foreground_color_legend=nothing)
+gangofsevenplot(P, C_suggested_pid, tf(1), w; name="Suggested PID", label, c=2, background_color_legend=nothing, foreground_color_legend=nothing)
+
+F_equivalent_pid = tf(C_equivalent_pid[:u,:r]) / tf(-C_equivalent_pid[:u,:y])
+gangofsevenplot(P, -tf(C_equivalent_pid[:u,:y]), F_equivalent_pid, w; name="Equivalent PID", c=3, background_color_legend=nothing, foreground_color_legend=nothing, linestyle=:dot)
+savefig("paper/figures/second_order_7.pdf")

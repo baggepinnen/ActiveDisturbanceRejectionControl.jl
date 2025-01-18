@@ -3,7 +3,7 @@
                                                           % you want to use the \thanks command
 \overrideIEEEmargins                                      % Needed to meet printer requirements.
 \usepackage{amsmath}
-
+\usepackage{flushend}
 \usepackage{graphicx} % Required for inserting images
 \usepackage{hyperref}
 \hypersetup{
@@ -68,25 +68,25 @@ We show that linear Active Disturbance-Rejection Control (ADRC) is equivalent to
 
 
 \section{Introduction}
-Active Disturbance-Rejection Control (ADRC) is often touted as a promising improvement over the PID controller as the goto tool for practitioners. In \cite{herbst2013simulative}, the author point out that ADRC, in particular linear ADRC, is a new name for the well-established method of using state feedback with state estimates provided by an observer augmented with a disturbance model. Linear ADRC makes the particular case of an integrating disturbance model acting on the plant input. 
+Active Disturbance-Rejection Control (ADRC) is often touted as a promising improvement over the PID controller as the goto tool for practitioners. In \cite{herbst2013simulative}, the author point out that ADRC, in particular linear ADRC, is a new name for the well-established method of using state feedback with state estimates provided by an observer augmented with a disturbance model. Linear ADRC makes the particular choice of an integrating disturbance model acting on the plant input. 
 
 The author of \cite{herbst2013simulative} compares linear ADRC, tuned using the "bandwidth method" \cite{gao2003scaling}, to PI and PID controllers tuned to a particular response to a reference step. The conclusion that is drawn is that ADRC is generally more robust and performs overall better than the PI and PID controllers.
 
-In this paper, we show that linear ADRC tuned with the bandwidth method is in fact equivalent to a commonplace implementation of a PID controller. For \emph{first-order systems}, the controller response to measurements is equivalent to a PI controller with a first-order filter on the measurement signal, and the response to references is a PID controller(!). With very minor approximation error, the complete two degree-of-freedom controller\footnote{Two inputs $r$ and $y$ with different response to each input.} can be represented as a single PI controller with set-point weighting and a first-order lowpass filter on the measurement, a very convenient conclusion considering how commonplace this particular implementation of a PI controller is. For \emph{second-order systems}, with a similar minor approximation (in reference response only, no approximation is made in the response from measurements), the linear ADRC controller is equivalent to a PID controller with set-point weighting and a second-order lowpass filter on measurements. Once again, a very convenient conclusion considering the ubiquity of this particular implementation.
+In this paper, we show that linear ADRC tuned with the bandwidth method is in fact equivalent to a commonplace implementation of a PID controller. For \emph{first-order systems}, the controller response to measurements is equivalent to a PI controller with a first-order filter on the measurement signal, and the response to references is a filtered PID controller. With very minor approximation error, the complete two degree-of-freedom\footnote{Two inputs $r$ and $y$ with different response to each input.} controller can be represented as a single PI controller with set-point weighting and a first-order lowpass filter on the measurement, a very convenient conclusion considering how commonplace this particular implementation of a PI controller is. For \emph{second-order systems}, with a similar minor approximation (in reference response only, no approximation is made in the response from measurements), the linear ADRC controller is equivalent to a PID controller with set-point weighting and a second-order lowpass filter on measurements. Once again, a very convenient conclusion considering the ubiquity of this particular implementation.
 
 Linear ADRC can thus be "implemented" by simply tuning a PI(D) controller with gains derived from the ADRC tuning parameters, and we can view linear ADRC as new PID "tuning rule".
 
-\section{details}
-We will follow the notation used in \cite{herbst2013simulative}, that considers an ADRC controller on the following form
+\section{Technical Details}
+We will follow the notation used in \cite{herbst2013simulative} for first-order systems, that considers an ADRC controller on the following form
 \begin{align}
    \bmatrixx{\dot{\hat{x}}_1 \\ \dot{\hat{x}}_2} &= 
    		\bmatrixx{-l_1 & 1 \\ -l_2 & 0} \bmatrixx{\hat{x}_1 \\ \hat{x}_2} + 
 		\bmatrixx{b_0 \\ 0} u + \bmatrixx{l_1 \\ l_2} y \\
 	u &= \dfrac{-K_P(r-y) - \hat{f}}{b_0} = \dfrac{-K_P(r-\hat{x}_1) - \hat{x}_2}{b_0}
 \end{align}
-where $r$ is the reference signal, $y$ is the measurement signal, $u$ is the control signal, and $\hat{f}$ is the estimated disturbance input. The tuning parameters are $l_1$, $l_2$, and $K_P$, and these are set by picking a desired settling time $T_s$ and the \emph{characteristic gain} of the plant, $b_0$. The plant is assumed to be on the form
+where the state-space system represents the disturbance observer, $r$ is the reference signal, $y$ is the measurement signal, $u$ is the control signal, and $\hat{f}$ is the estimated disturbance input. The tuning parameters are the observer parameters $l_1$, $l_2$, and $K_P$, and these are set using rules that require the user to pick a desired settling time $T_s$ and the \emph{characteristic gain} of the plant, $b_0$. The plant is assumed to be on the form
 $$P(s) = \dfrac{K}{Ts+1}$$
-which gives $b_0 = K/T$. The parameters as dictated by the tuning rule are selected as 
+which gives $b_0 = K/T$. The parameters as dictated by the bandwidth tuning rule are selected as 
 % Pdes1 = ss(tf([1],[1, 0]))
 % Pdes2 = add_low_frequency_disturbance(Pdes1, 1)
 
@@ -104,7 +104,9 @@ which gives $b_0 = K/T$. The parameters as dictated by the tuning rule are selec
 \end{align}
 where $g$ is a multiplier that determines how much faster the observer poles are compared to the closed-loop poles associated with the plant. In the experiment section for first-order systems in \cite{herbst2013simulative}, $T_s = 1$, $g = 10, K = T = 1$ are used.
 
-\subsection{First-order linear ADRC as a transfer function}
+\subsection{First-order linear ADRC and PID}
+\subsubsection{Transfer functions}
+
 When represented as a transfer function, the ADRC controller detailed above can be written as\footnote{We omit the parameter $b_0$ here for brevity. It scales the controller gain proportionally and is thus straightforward to incorporate.}
 
 % Cr =  4*T_s^2s^2 + 32*T_s*gs + 64*g^2
@@ -117,26 +119,26 @@ When represented as a transfer function, the ADRC controller detailed above can 
 
 
 \begin{align}
-	C_{ADRC}(s) = \bmatrixx{C_r(s) & C_y(s)}\\
+	C_{ADRC}(s) = \bmatrixx{C_r(s) & -C_y(s)}\\
 	C_r(s) = \dfrac{4T_{s}^2s^2 + 32T_{s}gs + 64g^2}{T_{s}^3s^2 + T_{s}^2(8g + 4)s} \\
-	C_y(s) = \dfrac{- 32T_{s}gs -(16T_{s} + 64)g^2}{s(T_{s}^3s + T_{s}^2(8g + 4))}
+	C_y(s) = \dfrac{32T_{s}gs + (16T_{s} + 64)g^2}{s(T_{s}^3s + T_{s}^2(8g + 4))}
 \end{align}
-(note how $C_y$ has negative feedback built in). Compare $C_y(s)$ to the transfer function of a PI controller with lowpass filter
+ Compare $C_y(s)$ to the transfer function of a PI controller with lowpass filter
 $$C_{PIF} = \big(k_p + k_i/s \big)\dfrac{1}{T_f s + 1} = \dfrac{k_p s + k_i}{s(T_f s + 1)}$$
 it becomes clear that we can pick $k_p, k_i, T_f$ so that the PI controller becomes identical to the feedback part of the ADRC controller, $C_y$:
 \begin{align}
-	k_p &= \dfrac{-4 g^2 - 8 g}{T_s(2 g + 1)} \label{eq:kp}\\
-	k_i &= \dfrac{-16 g^2}{T_s^2(2g + 1)} \label{eq:ki}\\
+	k_p &= \dfrac{4 g^2 + 8 g}{T_s(2 g + 1)} \label{eq:kp}\\
+	k_i &= \dfrac{16 g^2}{T_s^2(2g + 1)} \label{eq:ki}\\
 	T_f &= \dfrac{T_s}{8 g + 4} \label{eq:Tf}
 \end{align}
 
 
 
-The feedforward part, $C_r$, can similarly be shown to be equivalent to a first-order filtered PID controller, but more interestingly, we can approximate $C_r$ as $C_y$ with set-point weighting on the proportional term, but without the lowpass filter. To do this, we introduce the 2DOF PI controller $K_{ry}$ with set-point weight $b$, defined by the transfer function between $r,y$ and $u$ in the expression
+The feedforward part, $C_r$, can similarly be shown to be equivalent to a first-order filtered PID controller, but more interestingly, we can approximate $C_r$ as $-C_y$ with set-point weighting on the proportional term, but without the lowpass filter. To do this, we introduce the 2DOF PI controller $K_{ry}$ with set-point weight $b$, defined by the transfer function between $r,y$ and $u$ in the expression
 $$K_{ry}(s) : u = k_p (br - y) + k_i(r-y)\frac{1}{s}$$
 to $b = K_P / k_p$ where $K_P$ is the proportional gain in the ADRC controller and $k_p$ is the proportional gain in the equivalent PID controller obtained by matching $C_y$ to $C_{PIF}$. With this choice of $b$, the feedforward part of the 2DOF PI controller will have the following low and high-frequency asymptotes:
 \begin{align}
-	s &\to 0:  & \quad C_r(s) &\to \dfrac{16g^2}{T_{s}^2(2g + 1)s} \\
+	s &\to 0:  & \quad C_r(s) &\to \dfrac{16g^2}{T_{s}^2(2g + 1)s} = \dfrac{k_i}{s}  \\
 	s &\to 0:  & \quad K_{ry}(s) &\to \dfrac{k_i}{s} 
 \end{align}
 
@@ -150,19 +152,44 @@ In the other direction, we have
 
 We thus have the same gain from $r$ to $u$ through $K_{ry}$ as we have through the ADRC controller $C_r$ as $s \to 0$ and as $s \to \infty$, with a small discrepancy around the crossover frequency. Bode curves demonstrating this will be shown for the example provided in \cite{herbst2013simulative} in \cref{sec:numerical}.
 
-\subsection{Second-order linear ADRC}
+\subsubsection{State-space realization of equivalent PIF controller}
+For convenience, we also include a statespace realization of the proposed equivalent 2DOF PIF controller (with the approximation of $C_r$):
+\begin{align*}
+		\dot{x} &= \left[\begin{matrix}0.0 & - \frac{64 g^{2}}{T_{s}^{3}}\\0 & \frac{4 \left(- 2 g - 1\right)}{T_{s}}\end{matrix}\right] x + 		
+		\left[\begin{matrix}\frac{16 g^{2}}{T_{s}^{2} \left(2 g + 1\right)} & 0\\0 & 1\end{matrix}\right] \bmatrixx{r \\ y} \\
+		u &= \left[\begin{matrix}1.0 & \frac{16 g \left(- g - 2\right)}{T_{s}^{2}}\end{matrix}\right] x + 		
+		\left[\begin{matrix}\frac{4}{T_{s}} & 0\end{matrix}\right] \bmatrixx{r \\ y}
+\end{align*}
+with inputs $[r, y]$ and output $u$.
+
+\subsection{Second-Order Linear ADRC}
 In a similar fashion we can establish equivalence between the second-order linear ADRC controller and a PID controller with set-point weighting and a second-order lowpass filter on the measurement signal, given by the transfer function between $r,y$ and $u$ in the expression:
-$$K_{PIDF}(s) : u = \dfrac{k_p (br - y) + (r-y)\frac{k_i}{s} + (0r - y)k_d s}{T_f^2s^2 + 2T_f d s + 1}$$
-where $d$ is a relative damping parameter of the filter and $T_f$ is the time constant of the filter. We explicitly included the zero term $0r$ in the derivative part to highlight that set-point weight in the derivative term is zero, while $b$ generally is not.
+\begin{align}
+	K_{PIDF}(s) &: u = k_p (br - y_f) + (r-y_f)\frac{k_i}{s} - y_fk_d s \\
+	y_f &= \dfrac{1}{T_f^2s^2 + 2T_f d s + 1} y	
+\end{align}
+where $d$ is a relative damping parameter of the filter and $T_f$ is the time constant of the filter. Note that the reference $r$ does not appear in the derivative part, the set-point weight in the derivative term is zero, while $b$ generally is not.
 
 The expressions for $k_p, k_i, k_d, T_f, d$ are more complicated than for the first-order case, but can be derived by matching the transfer function of the ADRC controller to the transfer function of the PID controller in a similar fashion. The expressions are provided in the appendix, and the source code used to symbolically solve for them is provided in \cite{repo}.
 
-\section{Numerical results} \label{sec:numerical}
+
+\subsubsection{State-space realization of equivalent PIDF controller}
+The equivalent 2DOF filtered PID controller for second-order systems, including the approximation of $C_r$, can be realized in state-space form as
+\begin{align*}
+	\dot{x} &= \left[\begin{matrix}0 & 0 & 1\\1 & 0 & 0\\\frac{- 108 g^{2} - 216 g - 36}{T_{s}^{2}} & 0 & \frac{- 18.0 g - 12.0}{T_{s}}\end{matrix}\right]x + \\
+	~ &~ \left[\begin{matrix}0 & 0\\1 & 0\\0 & \frac{- 108 g^{2} - 216 g - 36}{T_{s}^{2}}\end{matrix}\right] \bmatrixx{r \\ y} \\
+	u &= \\
+	~ &~ \left[\begin{matrix}\frac{g^{2} \left(72 g + 108\right)}{T_{s}^{2} \left(3 g^{2} + 6 g + 1\right)} & \frac{216 g^{3}}{T_{s}^{3} \left(3 g^{2} + 6 g + 1\right)} & \frac{g \left(6 g^{2} + 36 g + 18\right)}{T_{s} \left(3 g^{2} + 6 g + 1\right)}\end{matrix}\right]x \\ 
+	~ &+ \left[\begin{matrix}\frac{36}{T_{s}^{2}} & 0\end{matrix}\right] \bmatrixx{r \\ y}
+\end{align*}
+with inputs $[r, y]$ and output $u$.
+
+\section{Numerical Comparisons} \label{sec:numerical}
 This section will demonstrate the equivalence between linear ADRC and the proposed equivalent PI(D) controllers numerically, using the same plant model as the one used in \cite{herbst2013simulative}. The plant model is a first-order system with $T = 1$ and $K = 1$, and the ADRC controller is tuned with $T_s = 1$ and $g = 10$. The parameters for the PI(D) controllers are found using \cref{eq:kp,eq:ki,eq:Tf}.
 
 The code to reproduce the results is available in \cite{repo}.
 
-\subsection{First-order system}
+\subsection{First-Order System}
 
 We compare three different controllers, the ADRC controller suggested in \cite{herbst2013simulative}, the PI controller suggested by \cite{herbst2013simulative}, as well as the filtered PI controller with approximation in the reference response suggested in this paper, $K_{ry}$.
 
@@ -215,7 +242,7 @@ but the (nominal) closed-loop response from measurements (and noise) to control 
 \end{figure}
 Here, it is clearly visible that the ADRC controller and the suggested PI controller are very different, where the former has significantly higher gain at intermediate frequencies, but rolloff for high frequencies.
 
-\subsection{Second-order system}
+\subsection{Second-Order System}
 The second-order system used in the experiment section in \cite{herbst2013simulative} is given by
 % K = 1
 % D = 1
@@ -225,8 +252,8 @@ $$P(s) = \dfrac{1}{T^2s^2 + 2DTs + 1} = \dfrac{1}{s^2 + 2s + 1}$$
 
 We show the same figures as for the first-order system
 \begin{itemize}
-	\item \cref{fig:second_order_K} shows the step response as the value of $K$ varies.
-	\item \cref{fig:second_order_T} shows the step response as the value of $T$ varies.
+	\item \cref{fig:second_order_K} shows the step response as the value of $K$ varies within the set $K \in \{0.1, 0.2, 0.5, 1, 2, 5\}$.
+	\item \cref{fig:second_order_T} shows the step response as the value of $T$ varies within the set $T \in \{0.1, 0.2, 0.5, 1, 2, 5\}$.
 	\item \cref{fig:second_order_bode_C} shows the Bode plot of the controllers.
 	\item \cref{fig:second_order_bode_ry} shows the Bode plot of the closed-loop response from references to output.
 	\item \cref{fig:second_order_bode_uy} shows the Bode plot of the closed-loop response from measurements to control signal.
@@ -286,17 +313,18 @@ This highlights that the linear ADRC tuning method can be used as a PID tuning m
 \bibliography{references}
 
 
+
 \appendix
 
 \section{Second-order linear ADRC as a transfer function}
 The transfer functions for the second-order ADRC controller (derived with symbolic computer calculations, reproduced in the software repository \cite{repo}) can be realized by the following PID+filter parameters
 \begin{align}
-	k_p &= \dfrac{(-72g^3 - 108g^2)}{(3T_s^2 g^2 + 6T_s^2 g + T_s^2)} \\
-	k_i &= \dfrac{-216g^3}{(3T_s^3 g^2 + 6T_s^3 g + T_s^3)} \\
-	k_d &= \dfrac{(-6g^3 - 36g^2 - 18g)}{(3T_s g^2 + 6T_s g + T_s)} \\
+	k_p &= \dfrac{(72g^3 + 108g^2)}{(3T_s^2 g^2 + 6T_s^2 g + T_s^2)} \\
+	k_i &= \dfrac{216g^3}{(3T_s^3 g^2 + 6T_s^3 g + T_s^3)} \\
+	k_d &= \dfrac{(6g^3 + 36g^2 + 18g)}{(3T_s g^2 + 6T_s g + T_s)} \\
 	T_f &= T_s/6 \sqrt{1/(3g^2 + 6g + 1)} \\
 	d &= (3g + 2)/2 \sqrt{1/(3g^2 + 6g + 1)} \\
-	b &= -(6/T_s)^2 / k_p
+	b &= (6/T_s)^2 / k_p
 \end{align}
 
 \end{document}

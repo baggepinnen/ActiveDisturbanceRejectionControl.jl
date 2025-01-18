@@ -96,15 +96,15 @@ If `simplified_r` is true, the controller is a PI controller with set-point weig
 """
 function equivalent_pid(Tsettle, ogain, b0=1; simplified_r = true)
     # The expressions for the PID parameters are obtained symbolically in the bottom of the script
-    kpy = (-72.0*ogain^3 - 108.0*ogain^2)/(3.0*Tsettle^2*ogain^2 + 6.0*Tsettle^2*ogain + Tsettle^2)
-    kiy = -216.0*ogain^3/(3.0*Tsettle^3*ogain^2 + 6.0*Tsettle^3*ogain + Tsettle^3)    
-    kdy = (-6.0*ogain^3 - 36.0*ogain^2 - 18.0*ogain)/(3.0*Tsettle*ogain^2 + 6.0*Tsettle*ogain + Tsettle)    
+    kpy = (72.0*ogain^3 + 108.0*ogain^2)/(3.0*Tsettle^2*ogain^2 + 6.0*Tsettle^2*ogain + Tsettle^2)
+    kiy = 216.0*ogain^3/(3.0*Tsettle^3*ogain^2 + 6.0*Tsettle^3*ogain + Tsettle^3)    
+    kdy = (6.0*ogain^3 + 36.0*ogain^2 + 18.0*ogain)/(3.0*Tsettle*ogain^2 + 6.0*Tsettle*ogain + Tsettle)    
     Ty = -0.166666666666667*Tsettle*sqrt(1/(3.0*ogain^2 + 6.0*ogain + 1.0))    
     dy = -0.5*(3.0*ogain + 2.0)*sqrt(1/(3.0*ogain^2 + 6.0*ogain + 1.0))  
   
-    b = -(6/Tsettle)^2 / kpy # Found by matching asymptotes
+    b = (6/Tsettle)^2 / kpy # Found by matching asymptotes
     C = if simplified_r
-        -pid_2dof_2filt(kpy, kiy, kdy, Ty, dy, b, 0)
+        pid_2dof_2filt(kpy, kiy, kdy, Ty, dy, b, 0)
     else
         error("Not implemented")
         # Cpidr = (b*kpy + kiy/s)
@@ -244,3 +244,11 @@ end
 cm = complete(model)
 mats, ssys = ModelingToolkit.linearize_symbolic(model, [cm.r, cm.y], [cm.u])
 RobustAndOptimalControl.show_construction(ss(mats.A, mats.B, mats.C, mats.D))
+
+
+## Get nice expressions for the state-space realization
+@syms T_s g
+sp.latex(sp.simplify.(equivalent_pid(T_s, g, simplified_r=true).A))
+sp.latex(sp.simplify.(equivalent_pid(T_s, g, simplified_r=true).B))
+sp.latex(sp.simplify.(equivalent_pid(T_s, g, simplified_r=true).C))
+sp.latex(sp.simplify.(equivalent_pid(T_s, g, simplified_r=true).D))

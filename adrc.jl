@@ -11,7 +11,7 @@ Base.oneunit(::Type{Any}) = Num(1)
 Base.inv(A::Matrix{Any}) = inv(identity.(A))
 
 using ControlSystemsBase, Plots, RobustAndOptimalControl, Test, LinearAlgebra
-default(margin=4Plots.mm, l=3, titlefontsize=12)
+default(margin=4Plots.mm, l=3, titlefontsize=12, background_color_legend=nothing, foreground_color_legend=nothing)
 t = 0:0.001:2
 
 # The plant model used in experiments
@@ -103,7 +103,8 @@ C_equivalent_pid = equivalent_pid(Tsettle, ogain, simplified_r=true)
 label = ["ADRC" "Suggested PI" "Equivalent PIF"]
 
 feedback2d(P, Ca) = feedback(P, -Ca[:u, :y])*(Ca[:u, :r])
-gangoffourplot(P, [Ca[:u,:y], C_suggested_pid, C_equivalent_pid[:u,:y]]; label, background_color_legend=nothing, foreground_color_legend=nothing)
+gangoffourplot(P, [Ca[:u,:y], C_suggested_pid, C_equivalent_pid[:u,:y]]; label, background_color_legend=nothing, foreground_color_legend=nothing, Ms_lines=[])
+plot!(ylims=(-Inf, Inf), legend=[true false false false])
 
 
 
@@ -196,3 +197,40 @@ sol = sp.solve(eqs, vars)
 @show kpy = sol[kp]
 @show kiy = sol[ki]
 @show Ty =  sol[Tf]
+
+## Get nice expressions for the state-space realization
+@variables T_s g
+to_latex(x) = sp.latex(sp.simplify.(symbolics_to_sympy.(x)))
+to_latex(equivalent_pid(T_s, g, simplified_r=true).A) |> println 
+to_latex(equivalent_pid(T_s, g, simplified_r=true).B) |> println 
+to_latex(equivalent_pid(T_s, g, simplified_r=true).C) |> println 
+to_latex(equivalent_pid(T_s, g, simplified_r=true).D) |> println 
+
+## Gang of seven
+
+function Base.vect(X::LTISystem...)
+    LTISystem[X...]
+end
+
+function gangofsevenplot(P, C, F, args...; c, name="", kwargs...)
+    S,D,CS,T = gangoffour(P,C)
+    RY = T*F
+    RU = CS*F
+    RE = S*F
+    bodeplot!(S, args...; show=false, title="\$S = 1/(1+PC)\$", lab="$name: \$S\$", c, sp=1, plotphase=false, legend=:bottomright, kwargs...)
+    bodeplot!(D, args...; show=false, title="\$PS = P/(1+PC)\$", lab="$name: \$PS\$", c, sp=2, plotphase=false, legend=:bottom, kwargs...)
+    bodeplot!(CS, args...; show=false, title="\$CS = C/(1+PC)\$", lab="$name: \$CS\$", c, sp=3, plotphase=false, legend=:bottom, kwargs...)
+    bodeplot!(T, args...; show=false, title="\$T = PC/(1+PC)\$", lab="$name: \$T\$", c, sp=4, plotphase=false, legend=:bottomleft, kwargs...)
+    Plots.hline!([1], l=(:black, :dash, 1), primary=false, sp=4)
+    bodeplot!(RE, args...; show=false, title="\$S = 1/(1+PC)\$", lab="$name: \$SF = r\\to e\$", l=(:dash,), c, sp=1, plotphase=false, kwargs...)
+    bodeplot!(RY, args...; show=false, title="\$T = PC/(1+PC)\$", lab="$name: \$TF = r\\to y\$", l=(:dash,), c, sp=4, plotphase=false, kwargs...)
+    bodeplot!(RU, args...; show=false, title="\$CS = C/(1+PC)\$", lab="$name: \$CSF = r\\to u\$", l=(:dash,), c, sp=3, plotphase=false, kwargs...)
+end
+w = exp10.(LinRange(-2, 4, 200))
+F = tf(Cr) / tf(-Cy) # This computes the equivalent reference prefilter appearing before the error calculation
+plot(; layout=4, ticks=:default, xscale=:log10, size=(800,800))#, link=:both)
+gangofsevenplot(P, -tf(Cy), F, w; name="ADRC", c=1, background_color_legend=nothing, foreground_color_legend=nothing)
+gangofsevenplot(P, C_suggested_pid, tf(1), w; name="Suggested PID", label, c=2, background_color_legend=nothing, foreground_color_legend=nothing)
+
+F_equivalent_pid = tf(C_equivalent_pid[:u,:r]) / tf(-C_equivalent_pid[:u,:y])
+gangofsevenplot(P, -tf(C_equivalent_pid[:u,:y]), F_equivalent_pid, w; name="Equivalent PID", c=3, background_color_legend=nothing, foreground_color_legend=nothing, linestyle=:dot)

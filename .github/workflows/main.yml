@@ -2,6 +2,8 @@ name: CI
 on: [push]
 jobs:
   test:
+    env:
+      PYTHON: conda
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:

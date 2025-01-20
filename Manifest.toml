@@ -2,7 +2,7 @@
 
 julia_version = "1.11.2"
 manifest_format = "2.0"
-project_hash = "c358c90f6961ec67e6013ca165bc56b556bbd96b"
+project_hash = "1c26a738a8678f68143eaf611f44b524b3ca678f"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "72af59f5b8f09faee36b4ec48e014a79210f2f4f"
@@ -1763,10 +1763,10 @@ weakdeps = ["TermInterface"]
     SymPyCoreTermInterfaceExt = "TermInterface"
 
 [[deps.SymbolicControlSystems]]
-deps = ["ControlSystemsBase", "InteractiveUtils", "Latexify", "LinearAlgebra", "SymPy", "Symbolics"]
-git-tree-sha1 = "92b367fad2cae58338e0a69d1912ac4a91e0ddfa"
+deps = ["ControlSystemsBase", "InteractiveUtils", "Latexify", "LinearAlgebra", "SymPy", "SymbolicUtils", "Symbolics"]
+git-tree-sha1 = "d26b24445a78399bc983651fff859cc9a8fe4e06"
 uuid = "886cb795-8fd3-4b11-92f6-8071e46f71c5"
-version = "0.2.0"
+version = "0.3.0"
 
 [[deps.SymbolicIndexingInterface]]
 deps = ["Accessors", "ArrayInterface", "RuntimeGeneratedFunctions", "StaticArraysCore"]

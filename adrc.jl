@@ -1,4 +1,3 @@
-
 cd(@__DIR__)
 using Pkg
 Pkg.activate(".")
@@ -9,7 +8,7 @@ Base.zero(::Type{Any}) = Num(0)
 Base.one(::Type{Any}) = Num(1)
 Base.oneunit(::Type{Any}) = Num(1)
 Base.inv(A::Matrix{Any}) = inv(identity.(A))
-
+isinteractive() && (Base.active_repl.options.hint_tab_completes = false) # This messes with sympy https://discourse.julialang.org/t/sympy-makes-repl-to-stuck/124814/6
 using ControlSystemsBase, Plots, RobustAndOptimalControl, Test, LinearAlgebra
 default(margin=4Plots.mm, l=3, titlefontsize=12, background_color_legend=nothing, foreground_color_legend=nothing)
 t = 0:0.001:2
@@ -19,6 +18,7 @@ K = 1
 T = 1
 P = tf([K],[1, T])
 s = tf('s')
+w = exp10.(LinRange(-3, 3, 200))
 
 
 """
@@ -114,7 +114,7 @@ plot!(ylims=(-Inf, Inf), legend=[true false false false])
 # ADRC controller has overall higher gain
 # It looks like a PI controller from r, and a filtered PI controller from y
 # Overall, it has a much higher low-frequency gain but rolloff from measurements
-bodeplot([Ca, [C_suggested_pid -C_suggested_pid], C_equivalent_pid]; label=repeat(label, inner=(1,4)), background_color_legend=nothing, foreground_color_legend=nothing, title=["\$G_{ur}\$" "\$G_{uy}\$" "" ""], legend=[false true false false], linestyle=repeat([:solid :solid :dash], inner=(1,4)))
+bodeplot([Ca, [C_suggested_pid -C_suggested_pid], C_equivalent_pid]; label=repeat(label, inner=(1,4)), background_color_legend=nothing, foreground_color_legend=nothing, title=["\$C_{ur}\$" "\$C_{uy}\$" "" ""], legend=[false true false false], linestyle=repeat([:solid :solid :dash], inner=(1,4)))
 savefig("paper/figures/first_order_bode_C.pdf")
 
 # Cr looks _almost_ like a non-filtered PI contorller (as opposed to a filtered PID contorller) We can identify the parameters of this simplified PI controller by matching the asymptotes of the two controllers. The low-frequency asymptote is given by ki, and the high-frequency asymptote is given by kpr. The high-frequency asymptote is given by the limit of Cr when s → ∞, which simlifies to the Kp used in the adrc controller.
@@ -125,7 +125,7 @@ savefig("paper/figures/first_order_bode_C.pdf")
 plot(step.([feedback2d(P, Ca), feedback(P*C_suggested_pid), feedback2d(P, C_equivalent_pid)], Ref(t)); label)
 
 # So are closed-loop tf from r -> y 
-bodeplot([feedback2d(P, Ca), feedback(P*C_suggested_pid), feedback2d(P, C_equivalent_pid)]; label=repeat(label, inner=(1,2)), title="\$G_{ry}\$", linestyle=repeat([:solid :solid :dash], inner=(1,2)))
+bodeplot([feedback2d(P, Ca), feedback(P*C_suggested_pid), feedback2d(P, C_equivalent_pid)]; label=repeat(label, inner=(1,2)), title="\$G_{yr}\$", linestyle=repeat([:solid :solid :dash], inner=(1,2)))
 savefig("paper/figures/first_order_bode_ry.pdf")
 
 # Bode plots from y -> u look different, ADRC is tuned much more aggressively but uses rolloff
@@ -162,10 +162,10 @@ savefig("paper/figures/first_order_T.pdf")
 ## To figure this out, we propagate symbolic variables through the adrc constructor
 s = tf('s')
 using Symbolics, SymbolicControlSystems
-@variables vTsettle vogain vb0
-K = adrc(vTsettle, vogain)#, vb0)
+@variables Tsettle ogain vb0
+K = adrc(Tsettle, ogain)#, vb0)
 K = ss(identity.(K.A), identity.(K.B), identity.(K.C), identity.(K.D))
-ex = [Num(K[1,1]) Num(K[1,2])]
+ex = [to_num(K[1,1]) to_num(K[1,2])]
 tf.(ex)
 # We then simply match the coefficients for each order of s, obtaining a system of equations that we can solve for the PID parameters
 # The PID controllers on symbolic form are constructed below
@@ -199,6 +199,7 @@ sol = sp.solve(eqs, vars)
 @show Ty =  sol[Tf]
 
 ## Get nice expressions for the state-space realization
+# Requires a temporary change to an if-statement in pid_ss_2dof
 @variables T_s g
 to_latex(x) = sp.latex(sp.simplify.(symbolics_to_sympy.(x)))
 to_latex(equivalent_pid(T_s, g, simplified_r=true).A) |> println 
@@ -206,11 +207,19 @@ to_latex(equivalent_pid(T_s, g, simplified_r=true).B) |> println
 to_latex(equivalent_pid(T_s, g, simplified_r=true).C) |> println 
 to_latex(equivalent_pid(T_s, g, simplified_r=true).D) |> println 
 
-## Gang of seven
-# TODO: upstream
-function Base.vect(X::LTISystem...)
-    LTISystem[X...]
+##
+@syms k_p k_i T_f b
+C_equiv_sym = pid_2dof(k_p, k_i; b, form=:parallel) * [tf(1) 0; 0 tf(1, [T_f, 1])]
+function show_latex_ss(sys::AbstractStateSpace)
+    A,B,C,D = to_latex.(ssdata(sys))
+    println("\\begin{align}")
+    println("\\dot{x} &= $(A)x + $(B)u \\\\")
+    println("y &= $(C)x + $(D)u")
+    println("\\end{align}")
 end
+
+show_latex_ss(C_equiv_sym)
+## Gang of seven
 
 function gangofsevenplot(P, C, F, args...; c, name="", kwargs...)
     S,D,CS,T = gangoffour(P,C)

@@ -116,7 +116,8 @@ end
 
 Tsettle = 5 # Parameters suggested in the paper
 ogain = 10
-Ca = adrc(Tsettle, ogain)
+b0 = 1
+Ca = adrc(Tsettle, ogain, b0)
 Cr = Ca[:u,:r]
 Cy = Ca[:u,:y]
 
@@ -125,10 +126,10 @@ Ki = 0.6
 TZ1 = TZ2 = T
 T1 = 0.2
 C_suggested_pid = Ki * (1+TZ1*s)*(1 + TZ2*s) / (s*(1 + T1*s))
-C_equivalent_pid = equivalent_pid(Tsettle, ogain; simplified_r=true)
+C_equivalent_pid = equivalent_pid(Tsettle, ogain, b0; simplified_r=true)
 label = ["ADRC" "Suggested PID" "Equivalent PIDF"]
 
-w = exp10.(LinRange(-2, 2, 200))
+w = exp10.(LinRange(-2, 3, 200))
 gangoffourplot(P, [Ca[:u,:y], C_suggested_pid, C_equivalent_pid[:u,:y]]; label)
 
 ##
@@ -141,14 +142,14 @@ feedback2d(P, Ca) = feedback(P, Ca[:u, :y], pos_feedback=true)*(Ca[:u, :r])
 # ADRC controller has overall much higher gain
 # It looks like a PI controller from r, and a filtered PID controller from y
 # Overall, it has a much higher gain but rolloff from measurements
-bodeplot([Ca, [C_suggested_pid -C_suggested_pid], C_equivalent_pid], w; label=repeat(label, inner=(1,4)), background_color_legend=nothing, foreground_color_legend=nothing, title=["\$G_{ur}\$" "\$G_{uy}\$" "" ""], legend=[true false false false], linestyle=repeat([:solid :solid :dash], inner=(1,4)))
+bodeplot([Ca, [C_suggested_pid -C_suggested_pid], C_equivalent_pid], w; label=repeat(label, inner=(1,4)), background_color_legend=nothing, foreground_color_legend=nothing, title=["\$C_{ur}\$" "\$C_{uy}\$" "" ""], legend=[true false false false], linestyle=repeat([:solid :solid :dash], inner=(1,4)))
 savefig("paper/figures/second_order_bode_C.pdf")
 
 # Step responses from r are almost identical
 plot(step.([feedback2d(P, Ca), feedback(P*C_suggested_pid), feedback2d(P, C_equivalent_pid)], Ref(t)); label)
 
 # So are closed-loop tf from r -> y 
-bodeplot([feedback2d(P, Ca), feedback(P*C_suggested_pid), feedback2d(P, C_equivalent_pid)], w; label=repeat(label, inner=(1,2)), title="\$G_{ry}\$", linestyle=repeat([:solid :solid :dash], inner=(1,2)))
+bodeplot([feedback2d(P, Ca), feedback(P*C_suggested_pid), feedback2d(P, C_equivalent_pid)], w; label=repeat(label, inner=(1,2)), title="\$G_{yr}\$", linestyle=repeat([:solid :solid :dash], inner=(1,2)))
 savefig("paper/figures/second_order_bode_ry.pdf")
 
 # Bode plots from y -> u look different, ADRC is tuned much more aggressively but uses rolloff. The equivalent PID is identical to ADRC
@@ -181,9 +182,9 @@ savefig("paper/figures/second_order_T.pdf")
 ## To figure this out, we propagate symbolic variables through the adrc constructor
 using Symbolics, SymbolicControlSystems
 @variables Tsettle ogain b0
-K = adrc(Tsettle, ogain)#, b0)
+K = adrc(Tsettle, ogain)
 K = ss(identity.(K.A), identity.(K.B), identity.(K.C), identity.(K.D))
-ex = [Num(K[1,1]) Num(K[1,2])]
+ex = [to_num(K[1,1]) to_num(K[1,2])]
 tf.(ex)
 # We then simply match the coefficients for each order of s, obtaining a system of equations that we can solve for the PID parameters
 # The PID controllers on symbolic form are constructed below
@@ -219,6 +220,19 @@ soli = 2
 @show Ty =  sols[soli][4]
 @show dy =  sols[soli][5]
 
+## Latex representation of the state-space realization of the equivalent PID controller
+@syms k_p k_i k_d T_f d b
+C_equiv_sym = pid_2dof_2filt(k_p, k_i, k_d, T_f, d, b, 0)
+function show_latex_ss(sys::AbstractStateSpace)
+    A,B,C,D = to_latex.(ssdata(sys))
+    println("\\begin{align}")
+    println("\\dot{x} &= $(A)x + $(B)u \\\\")
+    println("y &= $(C)x + $(D)u")
+    println("\\end{align}")
+end
+
+show_latex_ss(C_equiv_sym)
+
 ## Figure out a state-space realization of the equivalent PID controller
 # The result of these symbolic computations are palced inside the function pid_2dof_2filt above
 using ModelingToolkit
@@ -245,8 +259,13 @@ cm = complete(model)
 mats, ssys = ModelingToolkit.linearize_symbolic(model, [cm.r, cm.y], [cm.u])
 RobustAndOptimalControl.show_construction(ss(mats.A, mats.B, mats.C, mats.D))
 
-
 ## Get nice expressions for the state-space realization
+sp.latex(sp.simplify.(symbolics_to_sympy.(mats.A)))
+sp.latex(sp.simplify.(symbolics_to_sympy.(mats.B)))
+sp.latex(sp.simplify.(symbolics_to_sympy.(mats.C)))
+sp.latex(sp.simplify.(symbolics_to_sympy.(mats.D)))
+
+## Get nice expressions for the state-space realization in original parameters
 @syms T_s g
 sp.latex(sp.simplify.(equivalent_pid(T_s, g, simplified_r=true).A))
 sp.latex(sp.simplify.(equivalent_pid(T_s, g, simplified_r=true).B))

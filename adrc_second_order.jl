@@ -12,6 +12,7 @@ Base.inv(A::Matrix{Any}) = inv(identity.(A))
 Base.convert(::Type{T}, x::AbstractArray{Num}) where T <: Array{Num} = T(map(Num, x)) # https://github.com/JuliaSymbolics/Symbolics.jl/issues/1405
 
 using ControlSystemsBase, Plots, RobustAndOptimalControl, Test, LinearAlgebra
+default(margin=4Plots.mm, l=3, titlefontsize=12)
 t = 0:0.002:15
 
 # The plant model used in experiments
@@ -95,15 +96,15 @@ If `simplified_r` is true, the controller is a PI controller with set-point weig
 """
 function equivalent_pid(Tsettle, ogain, b0=1; simplified_r = true)
     # The expressions for the PID parameters are obtained symbolically in the bottom of the script
-    kpy = (-72.0*ogain^3 - 108.0*ogain^2)/(3.0*Tsettle^2*ogain^2 + 6.0*Tsettle^2*ogain + Tsettle^2)
-    kiy = -216.0*ogain^3/(3.0*Tsettle^3*ogain^2 + 6.0*Tsettle^3*ogain + Tsettle^3)    
-    kdy = (-6.0*ogain^3 - 36.0*ogain^2 - 18.0*ogain)/(3.0*Tsettle*ogain^2 + 6.0*Tsettle*ogain + Tsettle)    
+    kpy = (72.0*ogain^3 + 108.0*ogain^2)/(3.0*Tsettle^2*ogain^2 + 6.0*Tsettle^2*ogain + Tsettle^2)
+    kiy = 216.0*ogain^3/(3.0*Tsettle^3*ogain^2 + 6.0*Tsettle^3*ogain + Tsettle^3)    
+    kdy = (6.0*ogain^3 + 36.0*ogain^2 + 18.0*ogain)/(3.0*Tsettle*ogain^2 + 6.0*Tsettle*ogain + Tsettle)    
     Ty = -0.166666666666667*Tsettle*sqrt(1/(3.0*ogain^2 + 6.0*ogain + 1.0))    
     dy = -0.5*(3.0*ogain + 2.0)*sqrt(1/(3.0*ogain^2 + 6.0*ogain + 1.0))  
   
-    b = -(6/Tsettle)^2 / kpy # Found by matching asymptotes
+    b = (6/Tsettle)^2 / kpy # Found by matching asymptotes
     C = if simplified_r
-        -pid_2dof_2filt(kpy, kiy, kdy, Ty, dy, b, 0)
+        pid_2dof_2filt(kpy, kiy, kdy, Ty, dy, b, 0)
     else
         error("Not implemented")
         # Cpidr = (b*kpy + kiy/s)
@@ -115,7 +116,8 @@ end
 
 Tsettle = 5 # Parameters suggested in the paper
 ogain = 10
-Ca = adrc(Tsettle, ogain)
+b0 = 1
+Ca = adrc(Tsettle, ogain, b0)
 Cr = Ca[:u,:r]
 Cy = Ca[:u,:y]
 
@@ -124,10 +126,10 @@ Ki = 0.6
 TZ1 = TZ2 = T
 T1 = 0.2
 C_suggested_pid = Ki * (1+TZ1*s)*(1 + TZ2*s) / (s*(1 + T1*s))
-C_equivalent_pid = equivalent_pid(Tsettle, ogain; simplified_r=true)
-label = ["ADRC" "Suggested PID" "Equivalent PID (simp.)"]
+C_equivalent_pid = equivalent_pid(Tsettle, ogain, b0; simplified_r=true)
+label = ["ADRC" "Suggested PID" "Equivalent PIDF"]
 
-w = exp10.(LinRange(-2, 2, 200))
+w = exp10.(LinRange(-2, 3, 200))
 gangoffourplot(P, [Ca[:u,:y], C_suggested_pid, C_equivalent_pid[:u,:y]]; label)
 
 ##
@@ -140,16 +142,19 @@ feedback2d(P, Ca) = feedback(P, Ca[:u, :y], pos_feedback=true)*(Ca[:u, :r])
 # ADRC controller has overall much higher gain
 # It looks like a PI controller from r, and a filtered PID controller from y
 # Overall, it has a much higher gain but rolloff from measurements
-bodeplot([Ca, [C_suggested_pid -C_suggested_pid], C_equivalent_pid], w; label=repeat(label, inner=(1,4)), background_color_legend=nothing, foreground_color_legend=nothing)
+bodeplot([Ca, [C_suggested_pid -C_suggested_pid], C_equivalent_pid], w; label=repeat(label, inner=(1,4)), background_color_legend=nothing, foreground_color_legend=nothing, title=["\$C_{ur}\$" "\$C_{uy}\$" "" ""], legend=[true false false false], linestyle=repeat([:solid :solid :dash], inner=(1,4)))
+savefig("paper/figures/second_order_bode_C.pdf")
 
 # Step responses from r are almost identical
 plot(step.([feedback2d(P, Ca), feedback(P*C_suggested_pid), feedback2d(P, C_equivalent_pid)], Ref(t)); label)
 
 # So are closed-loop tf from r -> y 
-bodeplot([feedback2d(P, Ca), feedback(P*C_suggested_pid), feedback2d(P, C_equivalent_pid)], w; label=repeat(label, inner=(1,2)), title="Gry", background_color_legend=nothing, foreground_color_legend=nothing)
+bodeplot([feedback2d(P, Ca), feedback(P*C_suggested_pid), feedback2d(P, C_equivalent_pid)], w; label=repeat(label, inner=(1,2)), title="\$G_{yr}\$", linestyle=repeat([:solid :solid :dash], inner=(1,2)))
+savefig("paper/figures/second_order_bode_ry.pdf")
 
 # Bode plots from y -> u look different, ADRC is tuned much more aggressively but uses rolloff. The equivalent PID is identical to ADRC
-bodeplot([G_CS(P, -Ca[:u, :y]), G_CS(P, C_suggested_pid), G_CS(P, -C_equivalent_pid[:u, :y])]; label=repeat(label, inner=(1,2)), title="Gyu", legend=:topleft, background_color_legend=nothing, foreground_color_legend=nothing)
+bodeplot([G_CS(P, -Ca[:u, :y]), G_CS(P, C_suggested_pid), G_CS(P, -C_equivalent_pid[:u, :y])]; label=repeat(label, inner=(1,2)), title="\$G_{yu}\$", legend=[:topleft false], background_color_legend=nothing, foreground_color_legend=nothing, linestyle=repeat([:solid :solid :dash], inner=(1,2)), l=3)
+savefig("paper/figures/second_order_bode_uy.pdf")
 
 ## Reproduce response-plots from 
 using MonteCarloMeasurements
@@ -162,22 +167,24 @@ plot(step.([
     feedback2d(Pu, Ca),
     feedback(Pu*C_suggested_pid),
     feedback2d(Pu, C_equivalent_pid)
-], Ref(t)); label, ri=false, layout=(1,3), sp=(1:3)', size=(800,400), ylabel="y")
+], Ref(t)); label, ri=false, layout=(1,3), sp=(1:3)', size=(800,400), ylabel="y", c=[1 2 3])
+savefig("paper/figures/second_order_K.pdf")
 
 Pu = tf([K],[1, Tu])
 plot(step.([
     feedback2d(Pu, Ca),
     feedback(Pu*C_suggested_pid),
     feedback2d(Pu, C_equivalent_pid)
-], Ref(t)); label, ri=false, layout=(1,3), sp=(1:3)', size=(800,400), ylabel="y")
+], Ref(t)); label, ri=false, layout=(1,3), sp=(1:3)', size=(800,400), ylabel="y", c=[1 2 3])
+savefig("paper/figures/second_order_T.pdf")
 
 
 ## To figure this out, we propagate symbolic variables through the adrc constructor
 using Symbolics, SymbolicControlSystems
 @variables Tsettle ogain b0
-K = adrc(Tsettle, ogain)#, b0)
+K = adrc(Tsettle, ogain)
 K = ss(identity.(K.A), identity.(K.B), identity.(K.C), identity.(K.D))
-ex = [Num(K[1,1]) Num(K[1,2])]
+ex = [to_num(K[1,1]) to_num(K[1,2])]
 tf.(ex)
 # We then simply match the coefficients for each order of s, obtaining a system of equations that we can solve for the PID parameters
 # The PID controllers on symbolic form are constructed below
@@ -213,6 +220,19 @@ soli = 2
 @show Ty =  sols[soli][4]
 @show dy =  sols[soli][5]
 
+## Latex representation of the state-space realization of the equivalent PID controller
+@syms k_p k_i k_d T_f d b
+C_equiv_sym = pid_2dof_2filt(k_p, k_i, k_d, T_f, d, b, 0)
+function show_latex_ss(sys::AbstractStateSpace)
+    A,B,C,D = to_latex.(ssdata(sys))
+    println("\\begin{align}")
+    println("\\dot{x} &= $(A)x + $(B)u \\\\")
+    println("y &= $(C)x + $(D)u")
+    println("\\end{align}")
+end
+
+show_latex_ss(C_equiv_sym)
+
 ## Figure out a state-space realization of the equivalent PID controller
 # The result of these symbolic computations are palced inside the function pid_2dof_2filt above
 using ModelingToolkit
@@ -238,3 +258,43 @@ end
 cm = complete(model)
 mats, ssys = ModelingToolkit.linearize_symbolic(model, [cm.r, cm.y], [cm.u])
 RobustAndOptimalControl.show_construction(ss(mats.A, mats.B, mats.C, mats.D))
+
+## Get nice expressions for the state-space realization
+sp.latex(sp.simplify.(symbolics_to_sympy.(mats.A)))
+sp.latex(sp.simplify.(symbolics_to_sympy.(mats.B)))
+sp.latex(sp.simplify.(symbolics_to_sympy.(mats.C)))
+sp.latex(sp.simplify.(symbolics_to_sympy.(mats.D)))
+
+## Get nice expressions for the state-space realization in original parameters
+@syms T_s g
+sp.latex(sp.simplify.(equivalent_pid(T_s, g, simplified_r=true).A))
+sp.latex(sp.simplify.(equivalent_pid(T_s, g, simplified_r=true).B))
+sp.latex(sp.simplify.(equivalent_pid(T_s, g, simplified_r=true).C))
+sp.latex(sp.simplify.(equivalent_pid(T_s, g, simplified_r=true).D))
+
+##
+
+function gangofsevenplot(P, C, F, args...; c, name="", kwargs...)
+    S,D,CS,T = gangoffour(P,C)
+    RY = T*F
+    RU = CS*F
+    RE = S*F
+    bodeplot!(S, args...; show=false, title="\$S = 1/(1+PC)\$", lab="$name: \$S\$", c, sp=1, plotphase=false, legend=:bottomright, kwargs...)
+    bodeplot!(D, args...; show=false, title="\$PS = P/(1+PC)\$", lab="$name: \$PS\$", c, sp=2, plotphase=false, legend=:bottom, kwargs...)
+    bodeplot!(CS, args...; show=false, title="\$CS = C/(1+PC)\$", lab="$name: \$CS\$", c, sp=3, plotphase=false, legend=:topleft, kwargs...)
+    bodeplot!(T, args...; show=false, title="\$T = PC/(1+PC)\$", lab="$name: \$T\$", c, sp=4, plotphase=false, legend=:bottomleft, kwargs...)
+    Plots.hline!([1], l=(:black, :dash, 1), primary=false, sp=4)
+    bodeplot!(RE, args...; show=false, title="\$S = 1/(1+PC)\$", lab="$name: \$SF\$", l=(:dash,), c, sp=1, plotphase=false, kwargs...)
+    bodeplot!(RY, args...; show=false, title="\$T = PC/(1+PC)\$", lab="$name: \$TF = r\\to y\$", l=(:dash,), c, sp=4, plotphase=false, kwargs...)
+    bodeplot!(RU, args...; show=false, title="\$CS = C/(1+PC)\$", lab="$name: \$CSF\$", l=(:dash,), c, sp=3, plotphase=false, kwargs...)
+end
+default(titlefontsize=14, legendfontsize=8)
+w = exp10.(LinRange(-2, 4, 200))
+F = tf(Cr) / tf(-Cy) # This computes the equivalent reference prefilter appearing before the error calculation
+plot(; layout=4, ticks=:default, xscale=:log10, size=(1200,700))#, link=:both)
+gangofsevenplot(P, -tf(Cy), F, w; name="ADRC", c=1, background_color_legend=nothing, foreground_color_legend=nothing)
+gangofsevenplot(P, C_suggested_pid, tf(1), w; name="Suggested PID", label, c=2, background_color_legend=nothing, foreground_color_legend=nothing)
+
+F_equivalent_pid = tf(C_equivalent_pid[:u,:r]) / tf(-C_equivalent_pid[:u,:y])
+gangofsevenplot(P, -tf(C_equivalent_pid[:u,:y]), F_equivalent_pid, w; name="Equivalent PID", c=3, background_color_legend=nothing, foreground_color_legend=nothing, linestyle=:dot)
+savefig("paper/figures/second_order_7.pdf")

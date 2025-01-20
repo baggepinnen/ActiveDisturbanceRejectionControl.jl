@@ -10,13 +10,13 @@ Base.oneunit(::Type{Any}) = Num(1)
 Base.inv(A::Matrix{Any}) = inv(identity.(A))
 isinteractive() && (Base.active_repl.options.hint_tab_completes = false) # This messes with sympy https://discourse.julialang.org/t/sympy-makes-repl-to-stuck/124814/6
 using ControlSystemsBase, Plots, RobustAndOptimalControl, Test, LinearAlgebra
-default(margin=4Plots.mm, l=3, titlefontsize=12, background_color_legend=nothing, foreground_color_legend=nothing)
+default(margin=4Plots.mm, l=3, titlefontsize=12, legendfontsize=10, background_color_legend=nothing, foreground_color_legend=nothing)
 t = 0:0.001:2
 
 # The plant model used in experiments
 K = 1
 T = 1
-P = tf([K],[1, T])
+P = tf([K],[T, 1])
 s = tf('s')
 w = exp10.(LinRange(-3, 3, 200))
 
@@ -114,7 +114,7 @@ plot!(ylims=(-Inf, Inf), legend=[true false false false])
 # ADRC controller has overall higher gain
 # It looks like a PI controller from r, and a filtered PI controller from y
 # Overall, it has a much higher low-frequency gain but rolloff from measurements
-bodeplot([Ca, [C_suggested_pid -C_suggested_pid], C_equivalent_pid]; label=repeat(label, inner=(1,4)), background_color_legend=nothing, foreground_color_legend=nothing, title=["\$C_{ur}\$" "\$C_{uy}\$" "" ""], legend=[false true false false], linestyle=repeat([:solid :solid :dash], inner=(1,4)))
+bodeplot([Ca, [C_suggested_pid -C_suggested_pid], C_equivalent_pid]; label=repeat(label, inner=(1,4)), background_color_legend=nothing, foreground_color_legend=nothing, title=["\$C_{ur}\$" "\$C_{uy}\$" "" ""], legend=[true false false false], linestyle=repeat([:solid :solid :dash], inner=(1,4)))
 savefig("paper/figures/first_order_bode_C.pdf")
 
 # Cr looks _almost_ like a non-filtered PI contorller (as opposed to a filtered PID contorller) We can identify the parameters of this simplified PI controller by matching the asymptotes of the two controllers. The low-frequency asymptote is given by ki, and the high-frequency asymptote is given by kpr. The high-frequency asymptote is given by the limit of Cr when s → ∞, which simlifies to the Kp used in the adrc controller.
@@ -126,6 +126,7 @@ plot(step.([feedback2d(P, Ca), feedback(P*C_suggested_pid), feedback2d(P, C_equi
 
 # So are closed-loop tf from r -> y 
 bodeplot([feedback2d(P, Ca), feedback(P*C_suggested_pid), feedback2d(P, C_equivalent_pid)]; label=repeat(label, inner=(1,2)), title="\$G_{yr}\$", linestyle=repeat([:solid :solid :dash], inner=(1,2)))
+plot!(legend=[:bottomleft false])
 savefig("paper/figures/first_order_bode_ry.pdf")
 
 # Bode plots from y -> u look different, ADRC is tuned much more aggressively but uses rolloff
@@ -138,20 +139,20 @@ K = 1
 T = 1
 Ku = Particles([0.1, 0.2, 0.5, 1, 2, 5, 10])
 Tu = Particles([0.1, 0.2, 0.5, 1, 2, 5, 10])
-Pu = tf([Ku],[1, T])
+Pu = tf([Ku],[T, 1])
 plot(step.([
     feedback2d(Pu, Ca),
     feedback(Pu*C_suggested_pid),
     feedback2d(Pu, C_equivalent_pid)
-], Ref(t)); label, ri=false, layout=(1,3), sp=(1:3)', size=(800,400), ylabel="y", c=[1 2 3])
+], Ref(t)); label, ri=false, layout=(1,3), sp=(1:3)', size=(800,400), ylabel="y", c=[1 2 3], legend=:bottomright)
 savefig("paper/figures/first_order_K.pdf")
 
-Pu = tf([K],[1, Tu])
+Pu = tf([K],[Tu, 1])
 plot(step.([
     feedback2d(Pu, Ca),
     feedback(Pu*C_suggested_pid),
     feedback2d(Pu, C_equivalent_pid)
-], Ref(t)); label, ri=false, layout=(1,3), sp=(1:3)', size=(800,400), ylabel="y", c=[1 2 3])
+], Ref(0:0.001:2)); label, ri=false, layout=(1,3), sp=(1:3)', size=(800,400), ylabel="y", c=[1 2 3], legend=:bottomright)
 savefig("paper/figures/first_order_T.pdf")
 
 # ## 
@@ -235,7 +236,7 @@ function gangofsevenplot(P, C, F, args...; c, name="", kwargs...)
     bodeplot!(RY, args...; show=false, title="\$T = PC/(1+PC)\$", lab="$name: \$TF = r\\to y\$", l=(:dash,), c, sp=4, plotphase=false, kwargs...)
     bodeplot!(RU, args...; show=false, title="\$CS = C/(1+PC)\$", lab="$name: \$CSF = r\\to u\$", l=(:dash,), c, sp=3, plotphase=false, kwargs...)
 end
-default(titlefontsize=14, legendfontsize=8)
+default(titlefontsize=14, legendfontsize=9)
 w = exp10.(LinRange(-2, 4, 200))
 F = tf(Cr) / tf(-Cy) # This computes the equivalent reference prefilter appearing before the error calculation
 plot(; layout=4, ticks=:default, xscale=:log10, size=(1200,700))#, link=:both)

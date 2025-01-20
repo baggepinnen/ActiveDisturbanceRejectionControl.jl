@@ -1,15 +1,25 @@
+name = "ActiveDisturbanceRejectionControl"
+uuid = "6fd21cc8-6c53-585d-a603-bb6b65880c47"
+authors = ["baggepinnen <baggepinnen@gmail.com>"]
+repo = "https://github.com/baggepinnen/ActiveDisturbanceRejectionControl.jl.git"
+version = "0.1.0"
+
 [deps]
 ControlSystemsBase = "aaaaaaaa-a6ca-5380-bf3e-84a91bcd477e"
 Latexify = "23fbe1c1-3f47-55db-b15f-69d7ec21a316"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 ModelingToolkit = "961ee093-0014-501f-94e3-6117800e7a78"
 MonteCarloMeasurements = "0987c9cc-fe09-11e8-30f0-b96dd679fdca"
+OrdinaryDiffEqTsit5 = "b1df2697-797e-41e3-8120-5422d3b24e4a"
 RobustAndOptimalControl = "21fd56a4-db03-40ee-82ee-a87907bee541"
 SymbolicControlSystems = "886cb795-8fd3-4b11-92f6-8071e46f71c5"
 Symbolics = "0c5d862f-8b57-4792-8d23-62f2024744c7"
 
 [compat]
 ControlSystemsBase = "1.13.1"
+LinearAlgebra = "1.11.0"
 ModelingToolkit = "9.60.0"
 MonteCarloMeasurements = "1.4.0"
+OrdinaryDiffEqTsit5 = "1.1.0"
 RobustAndOptimalControl = "0.4.36"
 Symbolics = "6.22.1"

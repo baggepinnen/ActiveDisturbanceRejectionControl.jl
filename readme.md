@@ -18,3 +18,19 @@ This is also why the paper makes it look like the PID controller is much worse t
 
 
 For second-order linear ADRC, the conclusions are similar. The controller transfer function from the measurement to the control signal is a second-order-filtered PID controller, and the response from reference to control signal is approximately a PI controller (that is, set-point weighting in the proportional term, and zero set-point weighting in the derivative). The expressions for the parameters are much more complex, but the conclusion that a 2DOF PID controller can do the job equally well remains.
+
+## Julia package
+This repo contains a simple Julia package that can be installed by running
+```julia
+using Pkg
+Pkg.add(url="https://github.com/baggepinnen/ActiveDisturbanceRejectionControl.jl")
+```
+
+The package exports the two functions `adrc` and `equivalent_pid` that can be used to design an ADRC controller and a 2DOF PID controller with the same properties. 
+
+## Scripts
+The two scripts
+- [`adrc.jl`](https://github.com/baggepinnen/ActiveDisturbanceRejectionControl.jl/blob/main/adrc.jl)
+- [`adrc_second_order.jl`](https://github.com/baggepinnen/ActiveDisturbanceRejectionControl.jl/blob/main/adrc_second_order.jl)
+
+performs the numerical experiments presented in the paper, as well as the symbolic computations used to derive the PID+filter parameters.

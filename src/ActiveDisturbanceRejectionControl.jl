@@ -92,11 +92,15 @@ end
 
 
 """
-    equivalent_pid(Tsettle, ogain; simplified_r = true)
+    equivalent_pid(Tsettle, ogain; order = 1, simplified_r = true)
 
-Construct a PID controller that is equivalent to the ADRC controller with settling time `Tsettle` and observer poles that are `ogain` times faster than the closed-loop poles. The returned controller has two inputs, `r` and `y`, and one output, `u`.
+Construct a PI / PID controller that is equivalent to the ADRC controller of the same order, with settling time `Tsettle` and observer poles that are `ogain` times faster than the closed-loop poles. The returned controller has two inputs, `r` and `y`, and one output, `u`.
 
-If `simplified_r` is true, the controller is a PI controller with set-point weighting on the proportional term and a first-order lowpass filter on the measurement. If `simplified_r` is false, the controller exactly matches the ADRC contorller, which is a filtered PID controller from the reference signal.
+If `order = 1`, the controller is a PI controller with set-point weighting on the proportional term and a first-order lowpass filter on the measurement. If `order = 2`, the controller is a PID controller with set-point weighting on the proportional term and a second-order lowpass filters on the measurement.
+
+For `order = 1`: If `simplified_r` is true, the controller is a PI controller with set-point weighting on the proportional term and a first-order lowpass filter on the measurement. If `simplified_r` is false, the controller exactly matches the ADRC contorller, which is a filtered PID controller from the reference signal.
+
+The controller is returned as a named statespace object from RobustAndOptimalControl, and has inputs `[:r, :y]` and output `:u`.
 """
 function equivalent_pid(Tsettle, ogain, b0; simplified_r = true, order=1)
     if order == 1
@@ -137,8 +141,18 @@ function equivalent_pid(Tsettle, ogain, b0; simplified_r = true, order=1)
     end
 end
 
+
+"""
+    pid_2dof_2filt(kp, ki, kd, Tf, d, b, c)
+
+Construct a 2-DOF PID controller on the form
+```math
+u = kp(br-yf) + (r-yf) ki / s - kd*(c*r - yf)*s
+yf = 1 / (Tf^2*s^2 + 2d*Tf*s + 1) * y
+```
+The controller is returned as a named statespace object from RobustAndOptimalControl, and has inputs `[:r, :y]` and output `:u`.
+"""
 function pid_2dof_2filt(kp, ki, kd, Tf, d, b, c)
-    # r through filter
     tempA = [0 0 1; 1 0 0; -1 / (Tf^2) 0 (-2d) / Tf]
     tempB = [0 0; 1 0; c / (Tf^2) -1 / (Tf^2)]
     tempC = [kp ki kd]

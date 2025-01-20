@@ -246,3 +246,64 @@ gangofsevenplot(P, C_suggested_pid, tf(1), w; name="Suggested PID", label, c=2, 
 F_equivalent_pid = tf(C_equivalent_pid[:u,:r]) / tf(-C_equivalent_pid[:u,:y])
 gangofsevenplot(P, -tf(C_equivalent_pid[:u,:y]), F_equivalent_pid, w; name="Equivalent PID", c=3, background_color_legend=nothing, foreground_color_legend=nothing, linestyle=:dot)
 savefig("paper/figures/first_order_7.pdf")
+
+
+## Complete simulation in MTK
+using ModelingToolkit
+using ModelingToolkit: t_nounits as t, D_nounits as Der
+
+@mtkmodel MTKCL begin
+    @parameters begin
+        K = 1.0
+        T = 1.0
+        Tsettle = 1.0
+        ogain = 10.0
+        b0 = 1
+        Kp = 4/Tsettle
+    end
+    begin
+        sCL = -Kp
+        sESO = ogain*sCL
+        k1 = -2sESO
+        k2 = sESO^2
+    end
+    @variables begin
+        x1(t) = 0
+        x2(t) = 0
+        Px(t) = 0
+        u(t)
+        y(t)
+        r(t)
+    end
+    @equations begin
+        r ~ (t >= 0.01)
+        y ~ Px
+        T*Der(Px) + Px ~ K*u
+        Der(x1) ~ x2 + b0*u + k1*(y-x1)
+        Der(x2) ~ k2*(y-x1)
+        u ~ (Kp*(r-x1) - x2) / b0
+    end
+end
+
+@named model = MTKCL()
+model = complete(model)
+
+ssys = structural_simplify(model)
+prob = ODEProblem(ssys, [model.T => 0.1], (0.0, 2.0))
+
+using OrdinaryDiffEqTsit5, Plots
+sol = solve(prob, Tsit5())
+plot(sol)
+
+mats, ssys = ModelingToolkit.linearize_symbolic(model, [model.r], [model.y])
+RobustAndOptimalControl.show_construction(ss(mats.A, mats.B, mats.C, mats.D))
+
+T,K,ogain,Tsettle,Kp,b0 = 1,1,10,1,4,1
+temp = let
+    tempA = [-1 / T (-K*Kp) / (T*b0) (-K) / (T*b0); 2Kp*ogain -Kp - 2Kp*ogain 0; (Kp^2)*(ogain^2) -(Kp^2)*(ogain^2) 0]
+    tempB = [(K*Kp) / (T*b0); Kp; 0;;]
+    tempC = [1 0 0]
+    tempD = [0;;]
+    ss(tempA, tempB, tempC, tempD)
+end
+

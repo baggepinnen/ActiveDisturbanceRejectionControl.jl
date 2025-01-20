@@ -2,7 +2,7 @@
 
 julia_version = "1.11.2"
 manifest_format = "2.0"
-project_hash = "1c26a738a8678f68143eaf611f44b524b3ca678f"
+project_hash = "84b86ea811ace5318fa8d459aa86e90dd24320ac"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "72af59f5b8f09faee36b4ec48e014a79210f2f4f"
@@ -1287,6 +1287,22 @@ git-tree-sha1 = "12f1439c4f986bb868acda6ea33ebc78e19b95ad"
 uuid = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
 version = "1.7.0"
 
+[[deps.OrdinaryDiffEqCore]]
+deps = ["ADTypes", "Accessors", "Adapt", "ArrayInterface", "DataStructures", "DiffEqBase", "DocStringExtensions", "EnumX", "FastBroadcast", "FastClosures", "FastPower", "FillArrays", "FunctionWrappersWrappers", "InteractiveUtils", "LinearAlgebra", "Logging", "MacroTools", "MuladdMacro", "Polyester", "PrecompileTools", "Preferences", "RecursiveArrayTools", "Reexport", "SciMLBase", "SciMLOperators", "SciMLStructures", "SimpleUnPack", "Static", "StaticArrayInterface", "StaticArraysCore", "SymbolicIndexingInterface", "TruncatedStacktraces"]
+git-tree-sha1 = "f5f5af4cd0776eb17bb0a90cf82c6d2be17b59b2"
+uuid = "bbf590c4-e513-4bbe-9b18-05decba2e5d8"
+version = "1.15.0"
+weakdeps = ["EnzymeCore"]
+
+    [deps.OrdinaryDiffEqCore.extensions]
+    OrdinaryDiffEqCoreEnzymeCoreExt = "EnzymeCore"
+
+[[deps.OrdinaryDiffEqTsit5]]
+deps = ["DiffEqBase", "FastBroadcast", "LinearAlgebra", "MuladdMacro", "OrdinaryDiffEqCore", "PrecompileTools", "Preferences", "RecursiveArrayTools", "Reexport", "Static", "TruncatedStacktraces"]
+git-tree-sha1 = "96552f7d4619fabab4038a29ed37dd55e9eb513a"
+uuid = "b1df2697-797e-41e3-8120-5422d3b24e4a"
+version = "1.1.0"
+
 [[deps.PDMats]]
 deps = ["LinearAlgebra", "SparseArrays", "SuiteSparse"]
 git-tree-sha1 = "949347156c25054de2db3b166c52ac4728cbad65"
@@ -1621,6 +1637,11 @@ deps = ["InteractiveUtils", "MacroTools"]
 git-tree-sha1 = "5d7e3f4e11935503d3ecaf7186eac40602e7d231"
 uuid = "699a6c99-e7fa-54fc-8d76-47d257e15c1d"
 version = "0.9.4"
+
+[[deps.SimpleUnPack]]
+git-tree-sha1 = "58e6353e72cde29b90a69527e56df1b5c3d8c437"
+uuid = "ce78b400-467f-4804-87d8-8f486da07d0a"
+version = "1.1.0"
 
 [[deps.Sockets]]
 uuid = "6462fe0b-24de-5631-8697-dd941f90decc"
